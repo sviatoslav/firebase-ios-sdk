@@ -363,26 +363,6 @@ static NSTimeInterval const kLastSignInDateTimeIntervalInSeconds = 1505858583;
  */
 static const NSTimeInterval kExpectationTimeout = 2;
 
-/** @var kPhoneInfo
-    @brief The mock multi factor phone info.
- */
-static NSString *const kPhoneInfo = @"+15555555555";
-
-/** @var kEnrollmentID
-    @brief The mock multi factor enrollment ID.
- */
-static NSString *const kEnrollmentID = @"mockEnrollmentID";
-
-/** @var kDisplayName
-    @brief The mock multi factor display name.
- */
-static NSString *const kDisplayName = @"mockDisplayName";
-
-/** @var kEnrolledAt
-    @brief The mock multi factor enroll at date.
- */
-static NSString *const kEnrolledAt = @"2022-08-01T18:31:15.426458Z";
-
 /** @extention FIRSecureTokenService
     @brief Extends the FIRSecureTokenService class to expose one private method for testing only.
  */
@@ -390,7 +370,7 @@ static NSString *const kEnrolledAt = @"2022-08-01T18:31:15.426458Z";
 
 /** @fn hasValidAccessToken
     @brief private method exposed so it can be mocked to prevent the fake expiration date from
-        affecting the unit tests.
+        affecting the the unit tests.
  */
 - (BOOL)hasValidAccessToken;
 @end
@@ -484,13 +464,6 @@ static NSString *const kEnrolledAt = @"2022-08-01T18:31:15.426458Z";
   ];
   OCMStub([mockGetAccountInfoResponseUser providerUserInfo]).andReturn(providerUserInfos);
   OCMStub([mockGetAccountInfoResponseUser passwordHash]).andReturn(kPasswordHash);
-  FIRAuthProtoMFAEnrollment *enrollment = [[FIRAuthProtoMFAEnrollment alloc] initWithDictionary:@{
-    @"phoneInfo" : kPhoneInfo,
-    @"mfaEnrollmentId" : kEnrollmentID,
-    @"displayName" : kDisplayName,
-    @"enrolledAt" : kEnrolledAt
-  }];
-  OCMStub([mockGetAccountInfoResponseUser MFAEnrollments]).andReturn(@[ enrollment ]);
 
   XCTestExpectation *expectation = [self expectationWithDescription:@"callback"];
   [self
@@ -667,27 +640,8 @@ static NSString *const kEnrolledAt = @"2022-08-01T18:31:15.426458Z";
                                              XCTAssertEqualObjects(
                                                  unarchivedPhoneUserInfo.phoneNumber,
                                                  phoneUserInfo.phoneNumber);
-
-                                             // Verify FIRMultiFactorInfo properties.
-                                             XCTAssertEqualObjects(
-                                                 user.multiFactor.enrolledFactors[0].factorID,
-                                                 FIRPhoneMultiFactorID);
-                                             XCTAssertEqualObjects(
-                                                 user.multiFactor.enrolledFactors[0].UID,
-                                                 kEnrollmentID);
-                                             XCTAssertEqualObjects(
-                                                 user.multiFactor.enrolledFactors[0].displayName,
-                                                 kDisplayName);
-                                             NSDateFormatter *dateFormatter =
-                                                 [[NSDateFormatter alloc] init];
-                                             [dateFormatter
-                                                 setDateFormat:@"yyyy-MM-dd'T'HH:mm:ss.SSSZ"];
-                                             NSDate *date =
-                                                 [dateFormatter dateFromString:kEnrolledAt];
-                                             XCTAssertEqualObjects(
-                                                 user.multiFactor.enrolledFactors[0].enrollmentDate,
-                                                 date);
 #endif
+
                                              [expectation fulfill];
                                            }];
   [self waitForExpectationsWithTimeout:kExpectationTimeout handler:nil];

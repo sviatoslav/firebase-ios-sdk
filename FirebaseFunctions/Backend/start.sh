@@ -53,7 +53,6 @@ FUNCTIONS_BIN="./node_modules/.bin/functions"
 "${FUNCTIONS_BIN}" deploy unknownErrorTest --trigger-http
 "${FUNCTIONS_BIN}" deploy explicitErrorTest --trigger-http
 "${FUNCTIONS_BIN}" deploy httpErrorTest --trigger-http
-"${FUNCTIONS_BIN}" deploy throwTest --trigger-http
 "${FUNCTIONS_BIN}" deploy timeoutTest --trigger-http
 
 if [ "$1" != "synchronous" ]; then

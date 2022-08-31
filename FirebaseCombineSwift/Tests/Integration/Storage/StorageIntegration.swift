@@ -46,6 +46,7 @@ import Combine
 import FirebaseAuth
 import FirebaseCore
 import FirebaseStorage
+import FirebaseStorageSwift
 import FirebaseCombineSwift
 import XCTest
 
@@ -261,8 +262,7 @@ class StorageIntegration: XCTestCase {
         case .finished:
           XCTFail("Unexpected success return from putData)")
         case let .failure(error):
-          XCTAssertEqual(String(describing: error),
-                         "unauthorized(\"ios-opensource-samples.appspot.com\", \"ios/private/secretfile.txt\")")
+          XCTAssertEqual((error as NSError).code, StorageErrorCode.unauthorized.rawValue)
           expectation.fulfill()
         }
       }, receiveValue: { value in
@@ -289,7 +289,7 @@ class StorageIntegration: XCTestCase {
         case .finished:
           XCTFail("Unexpected success return from putFile)")
         case let .failure(error):
-          XCTAssertEqual(String(describing: error), "unknown")
+          XCTAssertEqual((error as NSError).domain, StorageErrorDomain)
           expectation.fulfill()
         }
       }, receiveValue: { value in
@@ -440,7 +440,7 @@ class StorageIntegration: XCTestCase {
         case .finished:
           XCTFail("Unexpected success return from getData)")
         case let .failure(error):
-          XCTAssertEqual(String(describing: error), "downloadSizeExceeded(1048576, 1024)")
+          XCTAssertEqual((error as NSError).domain, StorageErrorDomain)
           expectation.fulfill()
         }
       }, receiveValue: { value in

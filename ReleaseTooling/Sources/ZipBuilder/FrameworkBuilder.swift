@@ -189,7 +189,7 @@ struct FrameworkBuilder {
 
     var archs = targetPlatform.archs.map { $0.rawValue }.joined(separator: " ")
     // The 32 bit archs do not build for iOS 11.
-    if framework == "FirebaseAppCheck" || framework.hasSuffix("Swift") {
+    if framework == "FirebaseAppCheck" {
       if targetPlatform == .iOSDevice {
         archs = "arm64"
       } else if targetPlatform == .iOSSimulator {
@@ -277,12 +277,15 @@ struct FrameworkBuilder {
   }
 
   // TODO: Automatically get the right name.
-  /// The module name is different from the pod name when the module_name
+  /// The dynamic framework name is different from the pod name when the module_name
   /// specifier is used in the podspec.
   ///
-  /// - Parameter framework: The name of the pod to be built.
-  /// - Returns: The corresponding framework/module name.
-  private static func frameworkBuildName(_ framework: String) -> String {
+  /// - Parameter framework: The name of the framework to be built.
+  /// - Returns: The corresponding dynamic framework name.
+  private func frameworkBuildName(_ framework: String) -> String {
+    if !dynamicFrameworks {
+      return framework
+    }
     switch framework {
     case "PromisesObjC":
       return "FBLPromises"
@@ -308,12 +311,10 @@ struct FrameworkBuilder {
     var thinFrameworks = [URL]()
     for targetPlatform in TargetPlatform.allCases {
       let buildDir = projectDir.appendingPathComponent(targetPlatform.buildName)
-      let slicedFramework = buildSlicedFramework(
-        withName: FrameworkBuilder.frameworkBuildName(framework),
-        targetPlatform: targetPlatform,
-        buildDir: buildDir,
-        logRoot: logsDir
-      )
+      let slicedFramework = buildSlicedFramework(withName: framework,
+                                                 targetPlatform: targetPlatform,
+                                                 buildDir: buildDir,
+                                                 logRoot: logsDir)
       thinFrameworks.append(slicedFramework)
     }
     return thinFrameworks
@@ -338,19 +339,18 @@ struct FrameworkBuilder {
 
     // Create the framework directory in the filesystem for the thin archives to go.
     let fileManager = FileManager.default
-    let frameworkName = FrameworkBuilder.frameworkBuildName(framework)
-    let frameworkDir = outputDir.appendingPathComponent("\(frameworkName).framework")
+    let frameworkDir = outputDir.appendingPathComponent("\(framework).framework")
     do {
       try fileManager.createDirectory(at: frameworkDir, withIntermediateDirectories: true)
     } catch {
-      fatalError("Could not create framework directory while building framework \(frameworkName). " +
+      fatalError("Could not create framework directory while building framework \(framework). " +
         "\(error)")
     }
 
     // Find the location of the public headers, any platform will do.
     guard let anyPlatform = targetPlatforms.first,
           let archivePath = slicedFrameworks[anyPlatform] else {
-      fatalError("Could not get a path to an archive to fetch headers in \(frameworkName).")
+      fatalError("Could not get a path to an archive to fetch headers in \(framework).")
     }
 
     // Get the framework Headers directory. On macOS, it's a symbolic link.
@@ -390,7 +390,26 @@ struct FrameworkBuilder {
       } catch {
         fatalError("Error while enumerating files \(headersDir): \(error.localizedDescription)")
       }
-      umbrellaHeader = umbrellaHeaderURL.lastPathComponent
+      // Verify Firebase frameworks include an explicit umbrella header for Firebase.h.
+      if framework.hasPrefix("Firebase") || framework == "GoogleDataTransport",
+         framework != "FirebaseCoreDiagnostics",
+         framework != "FirebaseUI",
+         framework != "FirebaseMLModelDownloader",
+         !framework.hasSuffix("Swift") {
+        // Delete CocoaPods generated umbrella and use pre-generated one.
+        do {
+          try fileManager.removeItem(at: umbrellaHeaderURL)
+        } catch let error as NSError {
+          fatalError("Failed to delete: \(umbrellaHeaderURL). Error: \(error.domain)")
+        }
+        umbrellaHeader = "\(framework).h"
+        let frameworkHeader = headersDir.appendingPathComponent(umbrellaHeader)
+        guard fileManager.fileExists(atPath: frameworkHeader.path) else {
+          fatalError("Missing explicit umbrella header for \(framework).")
+        }
+      } else {
+        umbrellaHeader = umbrellaHeaderURL.lastPathComponent
+      }
     }
     // Copy the Headers over.
     let headersDestination = frameworkDir.appendingPathComponent("Headers")
@@ -401,7 +420,7 @@ struct FrameworkBuilder {
         "\(headersDestination): \(error)")
     }
     // Add an Info.plist. Required by Carthage and SPM binary xcframeworks.
-    CarthageUtils.generatePlistContents(forName: frameworkName,
+    CarthageUtils.generatePlistContents(forName: framework,
                                         withVersion: podInfo.version,
                                         to: frameworkDir)
 
@@ -417,10 +436,10 @@ struct FrameworkBuilder {
                                                                framework])
 
     guard let moduleMapContentsTemplate = podInfo.moduleMapContents else {
-      fatalError("Module map contents missing for framework \(frameworkName)")
+      fatalError("Module map contents missing for framework \(framework)")
     }
     let moduleMapContents = moduleMapContentsTemplate.get(umbrellaHeader: umbrellaHeader)
-    let frameworks = groupFrameworks(withName: frameworkName,
+    let frameworks = groupFrameworks(withName: framework,
                                      isCarthage: setCarthage,
                                      fromFolder: frameworkDir,
                                      slicedFrameworks: slicedFrameworks,
@@ -456,7 +475,7 @@ struct FrameworkBuilder {
     // Instead it use build options to specify them. For the zip build, we need the module maps to
     // include the dependent frameworks and libraries. Therefore we reconstruct them by parsing
     // the CocoaPods config files and add them here.
-    // Currently we only do the construction for Objective-C since Swift Module directories require
+    // Currently we only do the construction for Objective C since Swift Module directories require
     // several other files. See https://github.com/firebase/firebase-ios-sdk/pull/5040.
     // Therefore, for Swift we do a simple copy of the Modules files from an Xcode build.
     // This is sufficient for the testing done so far, but more testing is required to determine
@@ -650,8 +669,7 @@ struct FrameworkBuilder {
                               frameworks: [URL],
                               xcframeworksDir: URL,
                               resourceContents: URL?) -> URL {
-    let xcframework = xcframeworksDir
-      .appendingPathComponent(frameworkBuildName(name) + ".xcframework")
+    let xcframework = xcframeworksDir.appendingPathComponent(name + ".xcframework")
 
     // The arguments for the frameworks need to be separated.
     var frameworkArgs: [String] = []

@@ -5,7 +5,6 @@ source 'https://cdn.cocoapods.org/'
 use_frameworks!
 
 pod 'FirebaseCore', :path => '../../../..'
-pod 'FirebaseCoreInternal', :path => '../../../..'
 pod 'FirebaseInstallations', :path => '../../../..'
 pod 'FirebaseCoreDiagnostics', :path => '../../../..'
 pod 'FirebaseABTesting', :path => '../../../..'

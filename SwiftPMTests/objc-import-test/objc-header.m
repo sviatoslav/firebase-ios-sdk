@@ -24,6 +24,7 @@
 #import "FirebaseDatabase/FirebaseDatabase.h"
 #import "FirebaseDynamicLinks/FirebaseDynamicLinks.h"
 #import "FirebaseFirestore/FirebaseFirestore.h"
+#import "FirebaseFunctions/FirebaseFunctions.h"
 #if TARGET_OS_IOS || TARGET_OS_TV
 #import "FirebaseInAppMessaging/FirebaseInAppMessaging.h"
 #endif
@@ -33,7 +34,7 @@
 #import "FirebasePerformance/FirebasePerformance.h"
 #endif
 #import "FirebaseRemoteConfig/FirebaseRemoteConfig.h"
-#import "FirebaseStorageInternal/FirebaseStorage.h"
+#import "FirebaseStorage/FirebaseStorage.h"
 
 #import <Firebase.h>
 #import <FirebaseABTesting/FirebaseABTesting.h>
@@ -47,6 +48,7 @@
 #import <FirebaseDatabase/FirebaseDatabase.h>
 #import <FirebaseDynamicLinks/FirebaseDynamicLinks.h>
 #import <FirebaseFirestore/FirebaseFirestore.h>
+#import <FirebaseFunctions/FirebaseFunctions.h>
 #if TARGET_OS_IOS || TARGET_OS_TV
 #import <FirebaseInAppMessaging/FirebaseInAppMessaging.h>
 #endif
@@ -56,4 +58,4 @@
 #import <FirebasePerformance/FirebasePerformance.h>
 #endif
 #import <FirebaseRemoteConfig/FirebaseRemoteConfig.h>
-#import <FirebaseStorageInternal/FirebaseStorage.h>
+#import <FirebaseStorage/FirebaseStorage.h>

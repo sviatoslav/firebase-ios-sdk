@@ -21,6 +21,6 @@
 #import "FirebaseInAppMessaging/Sources/DefaultUI/FIRCore+InAppMessagingDisplay.h"
 
 NSString *const kFirebaseInAppMessagingDisplayErrorDomain = @"com.firebase.inappmessaging.display";
-FIRLoggerService kFIRLoggerInAppMessagingDisplay = @"[FirebaseInAppMessagingDisplay]";
+FIRLoggerService kFIRLoggerInAppMessagingDisplay = @"[Firebase/InAppMessagingDisplay]";
 
 #endif  // TARGET_OS_IOS

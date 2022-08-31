@@ -22,12 +22,13 @@
 #include <vector>
 
 #include "Firestore/core/src/local/index_manager.h"
-#include "Firestore/core/src/local/persistence.h"
 #include "gtest/gtest.h"
 
 namespace firebase {
 namespace firestore {
 namespace local {
+
+class Persistence;
 
 using FactoryFunc = std::unique_ptr<Persistence> (*)();
 

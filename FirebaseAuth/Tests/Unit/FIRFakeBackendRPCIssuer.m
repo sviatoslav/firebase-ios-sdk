@@ -15,13 +15,6 @@
  */
 
 #import "FirebaseAuth/Tests/Unit/FIRFakeBackendRPCIssuer.h"
-#import "FirebaseAuth/Sources/Backend/FIRAuthBackend.h"
-
-@interface FIRAuthBackend (Internal)
-+ (NSMutableURLRequest *)requestWithURL:(NSURL *)URL
-                            contentType:(NSString *)contentType
-                   requestConfiguration:(FIRAuthRequestConfiguration *)requestConfiguration;
-@end
 
 /** @var kFakeErrorDomain
     @brief Fake error domain used for testing.
@@ -43,11 +36,6 @@ static NSString *const kFakeErrorDomain = @"fake domain";
   _requestURL = [URL copy];
   if (body) {
     _requestData = body;
-    // Use the real implementation so that the complete request can
-    // be verified during testing.
-    _completeRequest = [FIRAuthBackend requestWithURL:URL
-                                          contentType:contentType
-                                 requestConfiguration:requestConfiguration];
     NSDictionary *JSON = [NSJSONSerialization JSONObjectWithData:body options:0 error:nil];
     _decodedRequest = JSON;
   }

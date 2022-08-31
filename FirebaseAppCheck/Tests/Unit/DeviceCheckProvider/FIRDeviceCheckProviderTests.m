@@ -24,28 +24,26 @@
 #import "FirebaseAppCheck/Sources/DeviceCheckProvider/FIRDeviceCheckTokenGenerator.h"
 #import "FirebaseAppCheck/Sources/Public/FirebaseAppCheck/FIRDeviceCheckProvider.h"
 
-#import "FirebaseCore/Extension/FirebaseCoreInternal.h"
+#import "FirebaseCore/Sources/Private/FirebaseCoreInternal.h"
 
 #import "SharedTestUtilities/AppCheckBackoffWrapperFake/FIRAppCheckBackoffWrapperFake.h"
 
-#if FIR_DEVICE_CHECK_SUPPORTED_TARGETS
-
-FIR_DEVICE_CHECK_PROVIDER_AVAILABILITY
-@interface FIRDeviceCheckProvider (Tests)
-
-- (instancetype)initWithAPIService:(id<FIRDeviceCheckAPIServiceProtocol>)APIService
-              deviceTokenGenerator:(id<FIRDeviceCheckTokenGenerator>)deviceTokenGenerator
-                    backoffWrapper:(id<FIRAppCheckBackoffWrapperProtocol>)backoffWrapper;
-
-@end
-
-FIR_DEVICE_CHECK_PROVIDER_AVAILABILITY
+API_AVAILABLE(ios(11.0), macos(10.15), tvos(11.0))
+API_UNAVAILABLE(watchos)
 @interface FIRDeviceCheckProviderTests : XCTestCase
 
 @property(nonatomic) FIRDeviceCheckProvider *provider;
 @property(nonatomic) id fakeAPIService;
 @property(nonatomic) id fakeTokenGenerator;
 @property(nonatomic) FIRAppCheckBackoffWrapperFake *fakeBackoffWrapper;
+
+@end
+
+@interface FIRDeviceCheckProvider (Tests)
+
+- (instancetype)initWithAPIService:(id<FIRDeviceCheckAPIServiceProtocol>)APIService
+              deviceTokenGenerator:(id<FIRDeviceCheckTokenGenerator>)deviceTokenGenerator
+                    backoffWrapper:(id<FIRAppCheckBackoffWrapperProtocol>)backoffWrapper;
 
 @end
 
@@ -270,5 +268,3 @@ FIR_DEVICE_CHECK_PROVIDER_AVAILABILITY
 }
 
 @end
-
-#endif  // FIR_DEVICE_CHECK_SUPPORTED_TARGETS

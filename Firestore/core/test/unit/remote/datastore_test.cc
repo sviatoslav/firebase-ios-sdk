@@ -23,7 +23,6 @@
 #include "Firestore/Protos/nanopb/google/firestore/v1/document.nanopb.h"
 #include "Firestore/Protos/nanopb/google/firestore/v1/firestore.nanopb.h"
 #include "Firestore/core/src/model/document.h"
-#include "Firestore/core/src/model/document_key.h"
 #include "Firestore/core/src/model/mutation.h"
 #include "Firestore/core/src/nanopb/message.h"
 #include "Firestore/core/src/nanopb/nanopb_util.h"
@@ -224,38 +223,12 @@ TEST_F(DatastoreTest, CommitMutationsSuccess) {
   EXPECT_TRUE(resulting_status.ok());
 }
 
-TEST_F(DatastoreTest, LookupDocumentsZeroRead) {
-  bool done = false;
-  std::vector<Document> resulting_docs;
-  Status resulting_status;
-  datastore->LookupDocuments(
-      {}, [&](const StatusOr<std::vector<Document>>& documents) {
-        done = true;
-        if (documents.ok()) {
-          resulting_docs = documents.ValueOrDie();
-        }
-        resulting_status = documents.status();
-      });
-  // Make sure Auth has a chance to run.
-  worker_queue->EnqueueBlocking([] {});
-
-  ForceFinishAnyTypeOrder(
-      {{Type::Write, CompletionResult::Ok},
-       /*Read after last*/ {Type::Read, CompletionResult::Error}});
-  ForceFinish({{Type::Finish, grpc::Status::OK}});
-
-  EXPECT_TRUE(done);
-  EXPECT_EQ(resulting_docs.size(), 0);
-  EXPECT_TRUE(resulting_status.ok());
-}
-
 TEST_F(DatastoreTest, LookupDocumentsOneSuccessfulRead) {
   bool done = false;
   std::vector<Document> resulting_docs;
   Status resulting_status;
   datastore->LookupDocuments(
-      {model::DocumentKey::FromPathString("foo/1")},
-      [&](const StatusOr<std::vector<Document>>& documents) {
+      {}, [&](const StatusOr<std::vector<Document>>& documents) {
         done = true;
         if (documents.ok()) {
           resulting_docs = documents.ValueOrDie();
@@ -282,9 +255,7 @@ TEST_F(DatastoreTest, LookupDocumentsTwoSuccessfulReads) {
   std::vector<Document> resulting_docs;
   Status resulting_status;
   datastore->LookupDocuments(
-      {model::DocumentKey::FromPathString("foo/1"),
-       model::DocumentKey::FromPathString("foo/2")},
-      [&](const StatusOr<std::vector<Document>>& documents) {
+      {}, [&](const StatusOr<std::vector<Document>>& documents) {
         done = true;
         if (documents.ok()) {
           resulting_docs = documents.ValueOrDie();
@@ -325,37 +296,6 @@ TEST_F(DatastoreTest, CommitMutationsError) {
   EXPECT_TRUE(done);
   EXPECT_FALSE(resulting_status.ok());
   EXPECT_EQ(resulting_status.code(), Error::kErrorUnavailable);
-}
-
-TEST_F(DatastoreTest, LookupDocumentsTwoSuccessfulReadsButFailureStatus) {
-  bool done = false;
-  std::vector<Document> resulting_docs;
-  Status resulting_status;
-  datastore->LookupDocuments(
-      {model::DocumentKey::FromPathString("foo/1"),
-       model::DocumentKey::FromPathString("foo/2")},
-      [&](const StatusOr<std::vector<Document>>& documents) {
-        done = true;
-        if (documents.ok()) {
-          resulting_docs = documents.ValueOrDie();
-        }
-        resulting_status = documents.status();
-      });
-  // Make sure Auth has a chance to run.
-  worker_queue->EnqueueBlocking([] {});
-
-  ForceFinishAnyTypeOrder(
-      {{Type::Write, CompletionResult::Ok},
-       {Type::Read, MakeFakeDocument("foo/1")},
-       {Type::Read, MakeFakeDocument("foo/2")},
-       /*Read after last*/ {Type::Read, CompletionResult::Error}});
-  ForceFinish({{Type::Finish, grpc::Status{grpc::UNAVAILABLE, ""}}});
-
-  EXPECT_TRUE(done);
-  EXPECT_EQ(resulting_docs.size(), 2);
-  EXPECT_EQ(resulting_docs[0]->key().ToString(), "foo/1");
-  EXPECT_EQ(resulting_docs[1]->key().ToString(), "foo/2");
-  EXPECT_TRUE(resulting_status.ok());
 }
 
 TEST_F(DatastoreTest, LookupDocumentsErrorBeforeFirstRead) {

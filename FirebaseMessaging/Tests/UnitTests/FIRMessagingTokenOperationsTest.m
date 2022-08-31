@@ -18,7 +18,7 @@
 
 #import <OCMock/OCMock.h>
 
-#import "FirebaseCore/Extension/FirebaseCoreInternal.h"
+#import "FirebaseCore/Sources/Private/FirebaseCoreInternal.h"
 #import "FirebaseInstallations/Source/Library/Private/FirebaseInstallationsInternal.h"
 #import "FirebaseMessaging/Sources/FIRMessagingConstants.h"
 #import "FirebaseMessaging/Sources/NSError+FIRMessaging.h"
@@ -50,8 +50,6 @@ static NSString *kRegistrationToken = @"token-12345";
 - (instancetype)initWithToken:(NSString *)token expirationDate:(NSDate *)expirationDate;
 @end
 
-#pragma mark - Fakes
-
 // A Fake operation that allows us to check that perform was called.
 // We are not using mocks here because we have no way of forcing NSOperationQueues to release
 // their operations, and this means that there is always going to be a race condition between
@@ -68,39 +66,6 @@ static NSString *kRegistrationToken = @"token-12345";
 }
 
 @end
-
-/// A fake heartbeat logger used for dependency injection during testing.
-@interface FIRHeartbeatLoggerFake : NSObject <FIRHeartbeatLoggerProtocol>
-@property(nonatomic, copy, nullable) FIRHeartbeatInfoCode (^onHeartbeatCodeForTodayHandler)(void);
-@end
-
-@implementation FIRHeartbeatLoggerFake
-
-- (nonnull FIRHeartbeatsPayload *)flushHeartbeatsIntoPayload {
-  // This API should not be used by the below tests because the Messaging
-  // SDK uses only the V1 heartbeat API (`heartbeatCodeForToday`) for
-  // getting a single heartbeat.
-  [self doesNotRecognizeSelector:_cmd];
-  return nil;
-}
-
-- (FIRHeartbeatInfoCode)heartbeatCodeForToday {
-  if (self.onHeartbeatCodeForTodayHandler) {
-    return self.onHeartbeatCodeForTodayHandler();
-  } else {
-    return FIRHeartbeatInfoCodeNone;
-  }
-}
-
-- (void)log {
-  // This API should not be used by the below tests because the Messaging
-  // SDK does not log heartbeats in it's networking context.
-  [self doesNotRecognizeSelector:_cmd];
-}
-
-@end
-
-#pragma mark - FIRMessagingTokenOperationsTest
 
 @interface FIRMessagingTokenOperationsTest : XCTestCase
 
@@ -140,6 +105,10 @@ static NSString *kRegistrationToken = @"token-12345";
   // `FIRMessagingTokenOperation` uses `FIRInstallations` under the hood to get FIS auth token.
   // Stub `FIRInstallations` to avoid using a real object.
   [self stubInstallations];
+
+  // `FIRMessagingTokenFetchOperation` uses `FIRHeartbeatInfo` to retrieve a heartbeat code.
+  // Stub `FIRHeartbeatInfo` to avoid using a real object.
+  [self stubHeartbeatInfo];
 }
 
 - (void)tearDown {
@@ -160,13 +129,12 @@ static NSString *kRegistrationToken = @"token-12345";
   NSString *expectedAuthHeader = [FIRMessagingTokenOperation HTTPAuthHeaderFromCheckin:checkin];
   XCTestExpectation *authHeaderMatchesCheckinExpectation =
       [self expectationWithDescription:@"Auth header string in request matches checkin info"];
-  FIRMessagingTokenFetchOperation *operation = [[FIRMessagingTokenFetchOperation alloc]
-      initWithAuthorizedEntity:kAuthorizedEntity
-                         scope:kScope
-                       options:nil
-            checkinPreferences:checkin
-                    instanceID:self.instanceID
-               heartbeatLogger:[[FIRHeartbeatLoggerFake alloc] init]];
+  FIRMessagingTokenFetchOperation *operation =
+      [[FIRMessagingTokenFetchOperation alloc] initWithAuthorizedEntity:kAuthorizedEntity
+                                                                  scope:kScope
+                                                                options:nil
+                                                     checkinPreferences:checkin
+                                                             instanceID:self.instanceID];
 
   NSURL *expectedRequestURL = [NSURL URLWithString:FIRMessagingTokenRegisterServer()];
   NSHTTPURLResponse *expectedResponse = [[NSHTTPURLResponse alloc] initWithURL:expectedRequestURL
@@ -212,8 +180,7 @@ static NSString *kRegistrationToken = @"token-12345";
                                                    scope:kScope
                                                  options:nil
                                       checkinPreferences:emptyCheckinPreferences
-                                              instanceID:self.instanceID
-                                         heartbeatLogger:[[FIRHeartbeatLoggerFake alloc] init]];
+                                              instanceID:self.instanceID];
   [operation addCompletionHandler:^(FIRMessagingTokenOperationResult result,
                                     NSString *_Nullable token, NSError *_Nullable error) {
     [failedExpectation fulfill];
@@ -250,8 +217,7 @@ static NSString *kRegistrationToken = @"token-12345";
                                                        scope:kScope
                                                      options:nil
                                           checkinPreferences:checkinPreferences
-                                                  instanceID:self.instanceID
-                                             heartbeatLogger:[[FIRHeartbeatLoggerFake alloc] init]];
+                                                  instanceID:self.instanceID];
   operation.performWasCalled = NO;
   __weak FIRMessagingTokenOperationFake *weakOperation = operation;
   [operation addCompletionHandler:^(FIRMessagingTokenOperationResult result,
@@ -290,13 +256,12 @@ static NSString *kRegistrationToken = @"token-12345";
     kFIRMessagingTokenOptionsAPNSIsSandboxKey : @(isSandbox),
   };
 
-  FIRMessagingTokenFetchOperation *operation = [[FIRMessagingTokenFetchOperation alloc]
-      initWithAuthorizedEntity:kAuthorizedEntity
-                         scope:kScope
-                       options:options
-            checkinPreferences:checkinPreferences
-                    instanceID:self.instanceID
-               heartbeatLogger:[[FIRHeartbeatLoggerFake alloc] init]];
+  FIRMessagingTokenFetchOperation *operation =
+      [[FIRMessagingTokenFetchOperation alloc] initWithAuthorizedEntity:kAuthorizedEntity
+                                                                  scope:kScope
+                                                                options:options
+                                                     checkinPreferences:checkinPreferences
+                                                             instanceID:self.instanceID];
 
   NSURL *expectedRequestURL = [NSURL URLWithString:FIRMessagingTokenRegisterServer()];
   NSHTTPURLResponse *expectedResponse = [[NSHTTPURLResponse alloc] initWithURL:expectedRequestURL
@@ -344,13 +309,12 @@ static NSString *kRegistrationToken = @"token-12345";
   FIRMessagingCheckinPreferences *checkinPreferences =
       [self setCheckinPreferencesWithLastCheckinTime:tenHoursAgo];
 
-  FIRMessagingTokenFetchOperation *operation = [[FIRMessagingTokenFetchOperation alloc]
-      initWithAuthorizedEntity:kAuthorizedEntity
-                         scope:kScope
-                       options:nil
-            checkinPreferences:checkinPreferences
-                    instanceID:self.instanceID
-               heartbeatLogger:[[FIRHeartbeatLoggerFake alloc] init]];
+  FIRMessagingTokenFetchOperation *operation =
+      [[FIRMessagingTokenFetchOperation alloc] initWithAuthorizedEntity:kAuthorizedEntity
+                                                                  scope:kScope
+                                                                options:nil
+                                                     checkinPreferences:checkinPreferences
+                                                             instanceID:self.instanceID];
   NSURL *expectedRequestURL = [NSURL URLWithString:FIRMessagingTokenRegisterServer()];
   NSHTTPURLResponse *expectedResponse = [[NSHTTPURLResponse alloc] initWithURL:expectedRequestURL
                                                                     statusCode:200
@@ -394,30 +358,9 @@ static NSString *kRegistrationToken = @"token-12345";
   XCTAssertEqualObjects(generatedHeader, expectedHeader);
 }
 
-- (void)testTokenFetchOperationFirebaseUserAgentAndHeartbeatHeader_WhenHeartbeatNeedsSending {
-  [self assertTokenFetchOperationRequestContainsFirebaseUserAgentAndHeartbeatInfoCode:
-            FIRHeartbeatInfoCodeGlobal];
-}
-
-- (void)testTokenFetchOperationFirebaseUserAgentAndHeartbeatHeader_WhenNoHeartbeatNeedsSending {
-  [self assertTokenFetchOperationRequestContainsFirebaseUserAgentAndHeartbeatInfoCode:
-            FIRHeartbeatInfoCodeNone];
-}
-
-#pragma mark - Internal Helpers
-
-- (void)assertTokenFetchOperationRequestContainsFirebaseUserAgentAndHeartbeatInfoCode:
-    (FIRHeartbeatInfoCode)heartbeatInfoCode {
+- (void)testTokenFetchOperationFirebaseUserAgentAndHeartbeatHeader {
   XCTestExpectation *completionExpectation =
       [self expectationWithDescription:@"completionExpectation"];
-
-  FIRHeartbeatLoggerFake *heartbeatLoggerFake = [[FIRHeartbeatLoggerFake alloc] init];
-  XCTestExpectation *heartbeatExpectation =
-      [self expectationWithDescription:@"heartbeatExpectation"];
-  heartbeatLoggerFake.onHeartbeatCodeForTodayHandler = ^FIRHeartbeatInfoCode {
-    [heartbeatExpectation fulfill];
-    return heartbeatInfoCode;
-  };
 
   FIRMessagingCheckinPreferences *checkinPreferences =
       [self setCheckinPreferencesWithLastCheckinTime:0];
@@ -427,8 +370,7 @@ static NSString *kRegistrationToken = @"token-12345";
                                                                   scope:kScope
                                                                 options:nil
                                                      checkinPreferences:checkinPreferences
-                                                             instanceID:self.instanceID
-                                                        heartbeatLogger:heartbeatLoggerFake];
+                                                             instanceID:self.instanceID];
 
   NSURL *expectedRequestURL = [NSURL URLWithString:FIRMessagingTokenRegisterServer()];
   NSHTTPURLResponse *expectedResponse = [[NSHTTPURLResponse alloc] initWithURL:expectedRequestURL
@@ -447,9 +389,9 @@ static NSString *kRegistrationToken = @"token-12345";
                     XCTAssertEqualObjects(userAgentValue, [FIRApp firebaseUserAgent]);
                     NSString *heartBeatCode =
                         sentRequest.allHTTPHeaderFields[kFIRMessagingFirebaseHeartbeatKey];
-                    // It is expected that the global heartbeat matches passed in
-                    // `heartbeatInfoCode`.
-                    XCTAssertEqual(heartBeatCode.integerValue, heartbeatInfoCode);
+                    // It is expected that both the SDK and global heartbeat are requested.
+                    XCTAssertEqual(heartBeatCode.integerValue, FIRHeartbeatInfoCodeCombined,
+                                   @"Heartbeat storage info needed to be updated but was not.");
                     [completionExpectation fulfill];
 
                     return YES;
@@ -462,6 +404,7 @@ static NSString *kRegistrationToken = @"token-12345";
                                }];
 }
 
+#pragma mark - Internal Helpers
 - (NSData *)dataForResponseWithValidToken:(BOOL)validToken {
   NSString *response;
   if (validToken) {
@@ -494,6 +437,12 @@ static NSString *kRegistrationToken = @"token-12345";
                                               expirationDate:[NSDate distantFuture]];
   id authTokenWithCompletionArg = [OCMArg invokeBlockWithArgs:authToken, [NSNull null], nil];
   OCMStub([_mockInstallations authTokenWithCompletion:authTokenWithCompletionArg]);
+}
+
+- (void)stubHeartbeatInfo {
+  _mockHeartbeatInfo = OCMClassMock([FIRHeartbeatInfo class]);
+  OCMStub([_mockHeartbeatInfo heartbeatCodeForTag:@"fire-iid"])
+      .andReturn(FIRHeartbeatInfoCodeCombined);
 }
 
 @end

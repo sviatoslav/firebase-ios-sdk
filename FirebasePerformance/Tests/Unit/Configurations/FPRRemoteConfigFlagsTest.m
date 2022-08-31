@@ -33,10 +33,8 @@ static NSInteger const kLogSource = 462;  // LogRequest_LogSource_Fireperf
 - (void)testInstanceCreation {
   XCTAssertNotNil([FPRRemoteConfigFlags sharedInstance]);
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnonnull"
-  XCTAssertNotNil([[FPRRemoteConfigFlags alloc] initWithRemoteConfig:nil]);
-#pragma clang diagnostic pop
+  FIRRemoteConfig *rConfig = [FIRRemoteConfig remoteConfig];
+  XCTAssertNotNil([[FPRRemoteConfigFlags alloc] initWithRemoteConfig:rConfig]);
 }
 
 /** Validate the singleton nature of the object. */

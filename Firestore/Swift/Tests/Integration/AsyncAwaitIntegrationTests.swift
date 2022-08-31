@@ -33,8 +33,8 @@ let emptyBundle = """
 }
 """
 
-#if swift(>=5.5.2)
-  @available(iOS 13, tvOS 13, macOS 10.15, macCatalyst 13, watchOS 7, *)
+#if swift(>=5.5)
+  @available(iOS 15, tvOS 15, macOS 12, watchOS 8, *)
   class AsyncAwaitIntegrationTests: FSTIntegrationTestCase {
     func testAddData() async throws {
       let collection = collectionRef()
@@ -64,14 +64,6 @@ let emptyBundle = """
       let bundleProgress = try await db
         .loadBundle(InputStream(data: bundle.data(using: String.Encoding.utf8)!))
       XCTAssertEqual(LoadBundleTaskState.success, bundleProgress.state)
-    }
-
-    func testRunTransactionDoesNotCrashOnNilSuccess() async throws {
-      let value = try await db.runTransaction { transact, error in
-        nil // should not crash
-      }
-
-      XCTAssertNil(value, "value should be nil on success")
     }
   }
 #endif

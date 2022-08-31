@@ -24,12 +24,12 @@ import Foundation
 
 // Skip these directories. Imports should only be repo-relative in libraries
 // and unit tests.
-let skipDirPatterns = ["/Sample/", "/Pods/", "FirebaseStorageInternal/Tests/Integration",
+let skipDirPatterns = ["/Sample/", "/Pods/", "FirebaseStorage/Tests/Integration",
                        "FirebaseDynamicLinks/Tests/Integration",
                        "FirebaseInAppMessaging/Tests/Integration/",
                        "SymbolCollisionTest/", "/gen/",
                        "CocoapodsIntegrationTest/", "FirebasePerformance/Tests/TestApp/",
-                       "cmake-build-debug/", "build/", "ObjCIntegration/",
+                       "cmake-build-debug/", "build/",
                        "FirebasePerformance/Tests/FIRPerfE2E/"] +
   [
     "CoreOnly/Sources", // Skip Firebase.h.
@@ -38,9 +38,12 @@ let skipDirPatterns = ["/Sample/", "/Pods/", "FirebaseStorageInternal/Tests/Inte
 
   // The following are temporary skips pending working through a first pass of the repo:
   [
-    "Firebase/CoreDiagnostics/FIRCDLibrary/Protogen/nanopb",
+    "FirebaseAppDistribution",
+    "FirebaseCore/Sources/Private", // TODO: work through adding this back.
+    "Firebase/CoreDiagnostics",
     "FirebaseDatabase/Sources/third_party/Wrap-leveldb", // Pending SwiftPM for leveldb.
     "Example",
+    "FirebaseInstallations/Source/Tests/Unit/",
     "Firestore",
     "GoogleUtilitiesComponents",
     "FirebasePerformance/ProtoSupport/",
@@ -76,12 +79,11 @@ private func checkFile(_ file: String, logger: ErrorLogger, inRepo repoURL: URL)
   }
   let isPublic = file.range(of: "/Public/") != nil &&
     // TODO: Skip legacy GDTCCTLibrary file that isn't Public and should be moved.
-    // This test is used in the GoogleDataTransport's repo's CI clone of this repo.
     file.range(of: "GDTCCTLibrary/Public/GDTCOREvent+GDTCCTSupport.h") == nil
   let isPrivate = file.range(of: "/Sources/Private/") != nil ||
     // Delete when FirebaseInstallations fixes directory structure.
     file.range(of: "Source/Library/Private/FirebaseInstallationsInternal.h") != nil ||
-    file.range(of: "FirebaseCore/Extension") != nil
+    file.range(of: "GDTCORLibrary/Internal/GoogleDataTransportInternal.h") != nil
 
   // Treat all files with names finishing on "Test" or "Tests" as files with tests.
   let isTestFile = file.contains("Test.m") || file.contains("Tests.m") ||
@@ -106,6 +108,9 @@ private func checkFile(_ file: String, logger: ErrorLogger, inRepo repoURL: URL)
     } else if file.contains("FirebaseTestingSupport") {
       // Module imports ok in SPM only test infrastructure.
       continue
+    } else if line.starts(with: "@import") {
+      // "@import" is only allowed for Swift Package Manager.
+      logger.importLog("@import should not be used in CocoaPods library code", file, lineNum)
     }
 
     // "The #else of a SWIFT_PACKAGE check should only do CocoaPods module-style imports."

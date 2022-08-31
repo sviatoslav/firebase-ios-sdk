@@ -10,7 +10,7 @@
   },
   {
     "sdk": "analytics",
-    "podspecs": ["FirebaseAnalytics.podspec", "FirebaseAnalyticsSwift.podspec", "GoogleAppMeasurement.podspec"],
+    "podspecs": ["FirebaseAnalytics.podspec.json", "FirebaseAnalyticsSwift.podspec", "GoogleAppMeasurement.podspec.json"],
     "filePatterns": [
       "^FirebaseAnalytics.*",
       "^GoogleAppMeasurement.*"
@@ -36,7 +36,7 @@
     "podspecs": ["FirebaseAuth.podspec"],
     "filePatterns": [
       "^FirebaseAuth.*",
-      "FirebaseAuth/Interop/[^/]+\\.h",
+      "Interop/Auth/Public/[^/]+\\.h",
       "\\.github/workflows/auth\\.yml"
     ]
   },
@@ -73,7 +73,7 @@
       "^FirebaseDatabase.*",
       "\\.github/workflows/database\\.yml",
       "Example/Database/",
-      "FirebaseAuth/Interop/[^/]+\\.h"
+      "Interop/Auth/Public/[^/]+\\.h"
     ]
   },
   {
@@ -90,6 +90,7 @@
     "podspecs": ["Firebase.podspec"],
     "filePatterns": [
       ".*.podspec",
+      ".*.podspec.json",
       "CoreOnly/.*"
     ]
   },
@@ -98,9 +99,9 @@
     "podspecs": ["FirebaseFirestore.podspec", "FirebaseFirestoreSwift.podspec"],
     "filePatterns": [
       "^Firestore/.*",
-      "FirebaseAppCheck/Interop/[^/]+\\.h",
-      "FirebaseAuth/Interop/[^/]+\\.h",
-      "FirebaseCore/Internal",
+      "FirebaseAppCheck/Sources/Interop/[^/]+\\.h",
+      "Interop/Auth/Public/[^/]+\\.h",
+      "FirebaseCore/Sources/Private",
       "FirebaseCore/Sources/Public",
       "FirebaseFirestore\\.podspec",
       "CMakeLists\\.txt",
@@ -110,12 +111,12 @@
   },
   {
     "sdk": "functions",
-    "podspecs": ["FirebaseFunctions.podspec"],
+    "podspecs": ["FirebaseFunctions.podspec", "FirebaseFunctionsSwift.podspec"],
     "filePatterns": [
       "^Functions.*",
       "\\.github/workflows/functions\\.yml",
-      "FirebaseAuth/Interop/.*\\.h",
-      "FirebaseMessaging/Interop/[^/]+\\.h"
+      "Interop/Auth/Public/.*\\.h",
+      "FirebaseMessaging/Sources/Interop/[^/]+\\.h"
     ]
   },
   {
@@ -187,10 +188,10 @@
   },
   {
     "sdk": "storage",
-    "podspecs": ["FirebaseStorage.podspec", "FirebaseStorageInternal.podspec"],
+    "podspecs": ["FirebaseStorage.podspec", "FirebaseStorageSwift.podspec"],
     "filePatterns": [
       "^FirebaseStorage.*",
-      "FirebaseAuth/Interop/[^/]+\\.h",
+      "Interop/Auth/Public/[^/]+\\.h",
       "\\.github/workflows/storage\\.yml"
     ]
   }

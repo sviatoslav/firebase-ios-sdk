@@ -16,11 +16,11 @@
 
 #import "FirebaseAppCheck/Sources/Core/FIRAppCheckLogger.h"
 
-#import "FirebaseCore/Extension/FirebaseCoreInternal.h"
+#import "FirebaseCore/Sources/Private/FirebaseCoreInternal.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
-FIRLoggerService kFIRLoggerAppCheck = @"[FirebaseAppCheck]";
+FIRLoggerService kFIRLoggerAppCheck = @"[Firebase/AppCheck]";
 
 NSString *const kFIRLoggerAppCheckMessageCodeUnknown = @"I-FAA001001";
 

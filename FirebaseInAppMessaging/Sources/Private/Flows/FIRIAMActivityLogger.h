@@ -29,7 +29,7 @@ typedef NS_ENUM(NSInteger, FIRIAMActivityType) {
 };
 
 NS_ASSUME_NONNULL_BEGIN
-@interface FIRIAMActivityRecord : NSObject <NSSecureCoding>
+@interface FIRIAMActivityRecord : NSObject <NSCoding>
 @property(nonatomic, nonnull, readonly) NSDate *timestamp;
 @property(nonatomic, readonly) FIRIAMActivityType activityType;
 @property(nonatomic, readonly) BOOL success;

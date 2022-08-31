@@ -16,7 +16,6 @@
 
 import ArgumentParser
 import Foundation
-
 private enum Constants {}
 
 extension Constants {
@@ -26,38 +25,14 @@ extension Constants {
   static let podSources = [
     "https://${BOT_TOKEN}@github.com/Firebase/SpecsTesting",
     "https://github.com/firebase/SpecsStaging.git",
-    // https://cdn.cocoapods.org is not used here since `--update-sources`
-    // will update spec repos before a spec is pushed, but cdn is not a spec
-    // repo.
-    "https://github.com/CocoaPods/Specs.git",
+    "https://cdn.cocoapods.org/",
   ]
 }
 
 // flags for 'pod push'
 extension Constants {
-  static let flags = [
-    "--skip-tests",
-    "--skip-import-validation",
-    "--update-sources",
-  ]
-  static let umbrellaPodFlags = Constants.flags + ["--use-json"]
-}
-
-public extension Date {
-  func dateTimeString() -> String {
-    let formatter = DateFormatter()
-    formatter.dateStyle = .short
-    formatter.timeStyle = .medium
-    return formatter.string(from: self)
-  }
-
-  func formattedDurationSince(_ date: Date) -> String {
-    let formatter = DateComponentsFormatter()
-    formatter.unitsStyle = .abbreviated
-    formatter.allowedUnits = [.hour, .minute, .second]
-    let secondsSinceDate = date.timeIntervalSince(self)
-    return formatter.string(from: secondsSinceDate) ?? "\(round(secondsSinceDate)) sec"
-  }
+  static let flags = ["--skip-tests", "--allow-warnings"]
+  static let umbrellaPodFlags = Constants.flags + ["--skip-import-validation", "--use-json"]
 }
 
 // SpecFiles is a wraper of dict mapping from required pods to their path. This
@@ -93,14 +68,13 @@ struct Shell {
   static let shared = Shell()
   @discardableResult
   func run(_ command: String, displayCommand: Bool = true,
-           displayFailureResult: Bool = true) throws -> Int32 {
+           displayFailureResult: Bool = true) -> Int32 {
     let task = Process()
     let pipe = Pipe()
     task.standardOutput = pipe
-    task.executableURL = URL(fileURLWithPath: "/bin/zsh")
+    task.launchPath = "/bin/bash"
     task.arguments = ["-c", command]
-
-    try task.run()
+    task.launch()
     if displayCommand {
       print("[SpecRepoBuilder] Command:\(command)\n")
     }
@@ -139,10 +113,10 @@ struct SpecRepoBuilder: ParsableCommand {
   @Option(parsing: .upToNextOption, help: "Podspecs that will not be pushed to repo.")
   var excludePods: [String] = []
 
-  @Option(help: "GitHub Account Name.")
+  @Option(help: "Github Account Name.")
   var githubAccount: String = "FirebasePrivate"
 
-  @Option(help: "GitHub Repo Name.")
+  @Option(help: "Github Repo Name.")
   var sdkRepoName: String = "SpecsTesting"
 
   @Option(help: "Local Podspec Repo Name.")
@@ -156,9 +130,6 @@ struct SpecRepoBuilder: ParsableCommand {
 
   @Flag(help: "Raise error while circular dependency detected.")
   var raiseCircularDepError: Bool = false
-
-  @Flag(help: "Allow warnings when push a spec.")
-  var allowWarnings: Bool = false
 
   // This will track down dependencies of pods and keep the sequence of
   // dependency installation in specFiles.depInstallOrder.
@@ -267,49 +238,31 @@ struct SpecRepoBuilder: ParsableCommand {
     return filterTargetDeps(deps, with: specFiles)
   }
 
-  func pushPodspec(forPod pod: URL, sdkRepo: String, sources: [String],
-                   flags: [String], shell: Shell = Shell.shared) throws -> Int32 {
+  func pushPodspec(forPod pod: String, sdkRepo: String, sources: [String],
+                   flags: [String], shell: Shell = Shell.shared) -> Int32 {
+    let podPath = sdkRepo + "/" + pod + ".podspec"
     let sourcesArg = sources.joined(separator: ",")
-    let flagsArgArr = allowWarnings ?flags + ["--allow-warnings"] : flags
-    let flagsArg = flagsArgArr.joined(separator: " ")
+    let flagsArg = flags.joined(separator: " ")
 
-    do {
-      // Update the repo
-      try shell.run("pod repo update")
-      var isDir: ObjCBool = true
-      let podName = pod.deletingPathExtension().lastPathComponent
-      let homeDirURL = FileManager.default.homeDirectoryForCurrentUser
-      let theProjectPath = "\(homeDirURL.path)/.cocoapods/repos/\(localSpecRepoName)/\(podName)"
-      print("check project path \(theProjectPath)")
-      if !FileManager.default.fileExists(atPath: theProjectPath, isDirectory: &isDir) {
-        let outcome =
-          try shell
-            .run(
-              "pod repo push \(localSpecRepoName) \(pod.path) --sources=\(sourcesArg) \(flagsArg)"
-            )
-        try shell.run("pod repo update")
-        print("Outcome is \(outcome)")
-        return outcome
-      }
-      print("`pod repo push` \(podName) will not run since the repo was uploaded already.")
-      return 0
+    let outcome =
+      shell
+        .run(
+          "pod repo push \(localSpecRepoName) \(podPath) --sources=\(sourcesArg) \(flagsArg)"
+        )
+    shell.run("pod repo update")
 
-    } catch {
-      throw error
-    }
+    print("Outcome is \(outcome)")
+
+    return outcome
   }
 
   // This will commit and push to erase the entire remote spec repo.
   func eraseRemoteRepo(repoPath: String, from githubAccount: String, _ sdkRepoName: String,
-                       shell: Shell = Shell.shared) throws {
-    do {
-      try shell
-        .run(
-          "git clone --quiet https://${BOT_TOKEN}@github.com/\(githubAccount)/\(sdkRepoName).git"
-        )
-    } catch {
-      throw error
-    }
+                       shell: Shell = Shell.shared) {
+    shell
+      .run(
+        "git clone --quiet https://${BOT_TOKEN}@github.com/\(githubAccount)/\(sdkRepoName).git"
+      )
     let fileManager = FileManager.default
     do {
       let sdk_repo_path = "\(repoPath)/\(sdkRepoName)"
@@ -336,14 +289,10 @@ struct SpecRepoBuilder: ParsableCommand {
         }
         if isDir {
           print("Removing \(dir.path)")
-          try shell.run("cd \(sdkRepoName); git rm -r \(dir.path)")
+          shell.run("cd \(sdkRepoName); git rm -r \(dir.path)")
         }
       }
-      do {
-        try shell.run("cd \(sdkRepoName); git commit -m 'Empty repo'; git push")
-      } catch {
-        throw error
-      }
+      shell.run("cd \(sdkRepoName); git commit -m 'Empty repo'; git push")
     } catch {
       print("Error while enumerating files \(repoPath): \(error.localizedDescription)")
     }
@@ -365,22 +314,19 @@ struct SpecRepoBuilder: ParsableCommand {
         at: documentsURL,
         includingPropertiesForKeys: nil
       )
-      let podspecURLs = fileURLs
-        .filter { $0.pathExtension == "podspec" || $0.pathExtension == "json" }
+      let podspecURLs = fileURLs.filter { $0.pathExtension == "podspec" }
       for podspecURL in podspecURLs {
-        print(podspecURL)
-        let podName = podspecURL.lastPathComponent.components(separatedBy: ".")[0]
-        print("Podspec, \(podName), is detected.")
+        let podName = podspecURL.deletingPathExtension().lastPathComponent
         if excludePods.contains(podName) {
           continue
+        } else if includePods.isEmpty || includePods.contains(podName) {
+          podSpecFiles[podName] = podspecURL
         }
-        podSpecFiles[podName] = podspecURL
       }
     } catch {
       print(
         "Error while enumerating files \(documentsURL.path): \(error.localizedDescription)"
       )
-      throw error
     }
 
     // This set is used to keep parent dependencies and help detect circular
@@ -389,7 +335,7 @@ struct SpecRepoBuilder: ParsableCommand {
     print("Detect podspecs: \(podSpecFiles.keys)")
     let specFileDict = SpecFiles(podSpecFiles, from: sdkRepo)
     generateOrderOfInstallation(
-      pods: includePods.isEmpty ? Array(podSpecFiles.keys) : includePods,
+      pods: Array(podSpecFiles.keys),
       specFiles: specFileDict,
       parentDeps: &tmpSet
     )
@@ -401,65 +347,39 @@ struct SpecRepoBuilder: ParsableCommand {
           print("remove \(sdkRepoName) dir.")
           try fileManager.removeItem(at: URL(fileURLWithPath: "\(curDir)/\(sdkRepoName)"))
         }
-        try eraseRemoteRepo(repoPath: "\(curDir)", from: githubAccount, sdkRepoName)
+        eraseRemoteRepo(repoPath: "\(curDir)", from: githubAccount, sdkRepoName)
 
       } catch {
         print("error occurred. \(error)")
-        throw error
       }
     }
 
     var exitCode: Int32 = 0
     var failedPods: [String] = []
-    let startDate = Date()
-    var minutes = 0
     for pod in specFileDict.depInstallOrder {
-      print("----------\(pod)-----------")
-      let timer: DispatchSourceTimer = {
-        let t = DispatchSource.makeTimerSource()
-        t.schedule(deadline: .now(), repeating: 60)
-        t.setEventHandler(handler: {
-          print("Tests have run \(minutes) min(s).")
-          minutes += 1
-        })
-        return t
-      }()
-      timer.resume()
       var podExitCode: Int32 = 0
-      do {
-        guard let podURL = specFileDict[pod] else {
-          Self
-            .exit(withError: SpecRepoBuilderError
-              .podspecNotFound(pod, from: sdkRepo))
-        }
-        switch pod {
-        case "Firebase":
-          podExitCode = try pushPodspec(
-            forPod: podURL,
-            sdkRepo: sdkRepo,
-            sources: podSources,
-            flags: Constants.umbrellaPodFlags
-          )
-        default:
-          podExitCode = try pushPodspec(
-            forPod: podURL,
-            sdkRepo: sdkRepo,
-            sources: podSources,
-            flags: Constants.flags
-          )
-        }
-        if podExitCode != 0 {
-          exitCode = 1
-          failedPods.append(pod)
-          print("Failed pod - \(pod)")
-        }
-      } catch {
-        throw error
+      print("----------\(pod)-----------")
+      switch pod {
+      case "Firebase":
+        podExitCode = pushPodspec(
+          forPod: pod,
+          sdkRepo: sdkRepo,
+          sources: podSources,
+          flags: Constants.umbrellaPodFlags
+        )
+      default:
+        podExitCode = pushPodspec(
+          forPod: pod,
+          sdkRepo: sdkRepo,
+          sources: podSources,
+          flags: Constants.flags
+        )
       }
-      timer.cancel()
-      let finishDate = Date()
-      print("\(pod) is finished at: \(finishDate.dateTimeString()). " +
-        "Duration: \(startDate.formattedDurationSince(finishDate))")
+      if podExitCode != 0 {
+        exitCode = 1
+        failedPods.append(pod)
+        print("Failed pod - \(pod)")
+      }
     }
     if exitCode != 0 {
       Self.exit(withError: SpecRepoBuilderError.failedToPush(pods: failedPods))

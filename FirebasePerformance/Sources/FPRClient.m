@@ -33,7 +33,7 @@
 
 #import "FirebasePerformance/Sources/Public/FirebasePerformance/FIRPerformance.h"
 
-#import "FirebaseCore/Extension/FirebaseCoreInternal.h"
+#import "FirebaseCore/Sources/Private/FirebaseCoreInternal.h"
 
 @interface FPRClient ()
 

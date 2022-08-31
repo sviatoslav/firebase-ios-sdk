@@ -253,41 +253,21 @@ func readDocument(at docRef: DocumentReference) {
       if let foo = document["foo"] {
         print("Field: \(foo)")
       }
-    } else if let error = error {
-      // New way to handle errors.
-      switch error {
-      case FirestoreErrorCode.unavailable:
-        print("Can't read document due to being offline!")
-      default:
-        print("Failed to read.")
-      }
-
-      // Old way to handle errors.
-      let nsError = error as NSError
-      guard nsError.domain == FirestoreErrorDomain else {
-        print("Unknown error!")
-        return
-      }
-
-      // Option 1: try to initialize the error code enum.
-      if let errorCode = FirestoreErrorCode.Code(rawValue: nsError.code) {
+    } else {
+      // TODO(mikelehen): There may be a better way to do this, but it at least demonstrates
+      // the swift error domain / enum codes are renamed appropriately.
+      if let errorCode = error.flatMap({
+        ($0._domain == FirestoreErrorDomain) ? FirestoreErrorCode(rawValue: $0._code) : nil
+      }) {
         switch errorCode {
         case .unavailable:
           print("Can't read document due to being offline!")
-        default:
+        case _:
           print("Failed to read.")
         }
+      } else {
+        print("Unknown error!")
       }
-
-      // Option 2: switch on the code and compare agianst raw values.
-      switch nsError.code {
-      case FirestoreErrorCode.unavailable.rawValue:
-        print("Can't read document due to being offline!")
-      default:
-        print("Failed to read.")
-      }
-    } else {
-      print("No error or document. Thanks, ObjC.")
     }
   }
 }
@@ -493,8 +473,8 @@ func terminateDb(database db: Firestore) {
   }
 }
 
-#if swift(>=5.5.2)
-  @available(iOS 13, tvOS 13, macOS 10.15, macCatalyst 13, watchOS 7, *)
+#if swift(>=5.5)
+  @available(iOS 15, tvOS 15, macOS 12, watchOS 8, *)
   func testAsyncAwait(database db: Firestore) async throws {
     try await db.enableNetwork()
     try await db.disableNetwork()

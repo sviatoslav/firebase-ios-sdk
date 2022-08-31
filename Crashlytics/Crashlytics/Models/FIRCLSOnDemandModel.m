@@ -20,7 +20,6 @@
 #import "Crashlytics/Crashlytics/Handlers/FIRCLSException.h"
 #import "Crashlytics/Crashlytics/Helpers/FIRCLSLogger.h"
 #include "Crashlytics/Crashlytics/Helpers/FIRCLSUtility.h"
-#import "Crashlytics/Crashlytics/Models/FIRCLSFileManager.h"
 #import "Crashlytics/Crashlytics/Models/FIRCLSOnDemandModel.h"
 #import "Crashlytics/Crashlytics/Private/FIRCLSOnDemandModel_Private.h"
 
@@ -39,7 +38,7 @@
 @property(nonatomic) double lastUpdated;
 @property(nonatomic) double currentStep;
 
-@property(nonatomic, strong) FIRCLSFileManager *fileManager;
+@property(nonatomic, strong) NSFileManager *fileManager;
 @property(nonatomic, strong) NSMutableArray *storedActiveReportPaths;
 
 @end
@@ -53,15 +52,13 @@
 static const double MAX_DELAY_SEC = 3600;
 static const double SEC_PER_MINUTE = 60;
 
-- (instancetype)initWithFIRCLSSettings:(FIRCLSSettings *)settings
-                           fileManager:(FIRCLSFileManager *)fileManager {
+- (instancetype)initWithFIRCLSSettings:(FIRCLSSettings *)settings {
   self = [super init];
   if (!self) {
     return nil;
   }
 
   _settings = settings;
-  _fileManager = fileManager;
 
   NSString *sdkBundleID = FIRCLSApplicationGetSDKBundleID();
   _operationQueue = [NSOperationQueue new];
@@ -77,6 +74,7 @@ static const double SEC_PER_MINUTE = 60;
 
   _lastUpdated = [NSDate timeIntervalSinceReferenceDate];
   _currentStep = -1;
+  _fileManager = [[NSFileManager alloc] init];
 
   self.storedActiveReportPaths = [NSMutableArray array];
 
@@ -101,7 +99,8 @@ static const double SEC_PER_MINUTE = 60;
     }
 
     FIRCLSDataCollectionToken *dataCollectionToken = [FIRCLSDataCollectionToken validToken];
-    NSString *activeReportPath = [self recordOnDemandExceptionWithModel:exceptionModel];
+    NSString *activeReportPath = FIRCLSExceptionRecordOnDemandModel(
+        exceptionModel, self.recordedOnDemandExceptionCount, self.droppedOnDemandExceptionCount);
 
     if (!activeReportPath) {
       FIRCLSErrorLog(@"Error recording on-demand exception");
@@ -126,7 +125,7 @@ static const double SEC_PER_MINUTE = 60;
       } else {
         [self.storedActiveReportPaths insertObject:activeReportPath atIndex:0];
         if ([self.storedActiveReportPaths count] > FIRCLSMaxUnsentReports) {
-          [self.fileManager removeItemAtPath:[self.storedActiveReportPaths lastObject]];
+          [self.fileManager removeItemAtPath:[self.storedActiveReportPaths lastObject] error:nil];
           [self.storedActiveReportPaths removeLastObject];
           [self decrementRecordedExceptionCount];
           [self incrementDroppedExceptionCount];
@@ -175,11 +174,6 @@ static const double SEC_PER_MINUTE = 60;
 
 - (void)implementOnDemandUploadDelay:(int)delay {
   sleep(delay);
-}
-
-- (NSString *)recordOnDemandExceptionWithModel:(FIRExceptionModel *)exceptionModel {
-  return FIRCLSExceptionRecordOnDemandModel(exceptionModel, self.recordedOnDemandExceptionCount,
-                                            self.droppedOnDemandExceptionCount);
 }
 
 - (int)droppedOnDemandExceptionCount {

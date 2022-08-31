@@ -54,9 +54,16 @@ class StorageReferenceTests: XCTestCase {
     // When
     ref?.putFile(from: dummyFileURL, metadata: nil)
       .sink { completion in
-        if case let .failure(error) = completion {
+        if case let .failure(error as NSError) = completion {
           putFileExpectation.fulfill()
-          XCTAssertEqual("unknown", String(describing: error))
+
+          XCTAssertEqual(error.domain, StorageErrorDomain)
+          XCTAssertEqual(error.code, StorageErrorCode.unknown.rawValue)
+
+          let expectedDescription =
+            "File at URL: \(dummyFileURL.absoluteString) is not reachable. Ensure file URL is not" +
+            " a directory, symbolic link, or invalid url."
+          XCTAssertEqual(error.localizedDescription, expectedDescription)
         }
       } receiveValue: { metadata in
         XCTFail("💥 result unexpected")

@@ -375,7 +375,6 @@ int64_t GetCurrentMemoryUsedInMb() {
   return -1;
 }
 
-#if !defined(THREAD_SANITIZER) && !defined(ADDRESS_SANITIZER)
 - (void)testReasonableMemoryUsageForLotsOfMutations {
   XCTestExpectation *expectation =
       [self expectationWithDescription:@"testReasonableMemoryUsageForLotsOfMutations"];
@@ -384,7 +383,7 @@ int64_t GetCurrentMemoryUsedInMb() {
   FIRWriteBatch *batch = [mainDoc.firestore batch];
 
   // > 500 mutations will be rejected.
-  const int maxMutations = 400;
+  const int maxMutations = 500;
   for (int i = 0; i != maxMutations; ++i) {
     FIRDocumentReference *nestedDoc = [[mainDoc collectionWithPath:@"nested"] documentWithAutoID];
     // The exact data doesn't matter; what is important is the large number of mutations.
@@ -402,18 +401,19 @@ int64_t GetCurrentMemoryUsedInMb() {
     const int64_t memoryUsedAfterCommitMb = GetCurrentMemoryUsedInMb();
     XCTAssertNotEqual(memoryUsedAfterCommitMb, -1);
 
+#if !defined(THREAD_SANITIZER) && !defined(ADDRESS_SANITIZER)
     // This by its nature cannot be a precise value. Runs on simulator seem to give an increase of
     // 10MB in debug mode pretty consistently. A regression would be on the scale of 500Mb.
     //
     // This check is disabled under the thread sanitizer because it introduces an overhead of
     // 5x-10x.
     XCTAssertLessThan(memoryUsedAfterCommitMb - memoryUsedBeforeCommitMb, 20);
+#endif
 
     [expectation fulfill];
   }];
   [self awaitExpectations];
 }
-#endif  // #if !defined(THREAD_SANITIZER) && !defined(ADDRESS_SANITIZER)
 
 @end
 

@@ -40,15 +40,9 @@ struct FirebaseRemoteConfigValueDecoderHelper: FirebaseRemoteConfigValueDecoding
     return value.dataValue
   }
 
-  func arrayValue() -> [AnyHashable]? {
-    guard let value = value.jsonValue as? [AnyHashable] else {
-      return nil
-    }
-    return value
-  }
-
-  func dictionaryValue() -> [String: AnyHashable]? {
+  func jsonValue() -> [String: AnyHashable]? {
     guard let value = value.jsonValue as? [String: AnyHashable] else {
+      // nil is the historical behavior for failing to extract JSON.
       return nil
     }
     return value

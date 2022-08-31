@@ -1,37 +1,25 @@
-# 9.5.0
-- [added] DeviceCheck and App Attest providers are supported by watchOS 9.0+. (#10094, #10098)
-- [added] App Attest provider availability updated to support tvOS 15.0+. (#10093)
-
-# 9.0.0
-- [added] **Breaking change:** `FirebaseAppCheck` has exited beta and is now
-  generally available for use.
-
-# 8.12.0
+# v8.12.0 -- M111
 - [fixed] Build failures with Swift Package Manager for watchOS. (#9191)
 
-# 8.9.0
+# v8.9.0 -- M106
 - [fixed] Improved error handling logic by minimizing amount of requests that are unlikely to succeed. (#8798)
 
-# 8.8.0
+# v8.8.0 -- M105
 - [added] Add support for bundle ID-based API Key Restrictions (#8678)
 
-# 8.6.0
+# v8.6.0 -- M102
 - [changed] Documented unsupported platforms (#8493).
 
-# 8.5.0
+# v8.5.0 -- M101
 - [changed] App Check SDK available for all supported platforms/OS versions, but App Attest and
 DeviceCheck providers availability changed to match underlying platfrom API availability. (#8388)
-
-# 8.4.0
+# v8.4.0 -- M100
 - [fixed] Fixed build issues introduced in Xcode 13 beta 3. (#8401)
 - [fixed] Bump Promises dependency. (#8365)
-
-# 8.3.0
+# v8.3.0 -- M99
 - [added] Token API for 3P use. (#8266)
-
-# 8.2.0
+# v8.2.0 -- M98
 - [added] Apple's App Attest attestation provider support. (#8133)
 - [changed] Token auto-refresh optimizations. (#8232)
-
-# 8.0.0
+# v8.0.0 -- M95
 - [added] Firebase abuse reduction support SDK. (#7928, #7937, #7948)

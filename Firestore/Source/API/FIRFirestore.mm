@@ -21,12 +21,8 @@
 #include <utility>
 
 #import "FIRFirestoreSettings+Internal.h"
-#import "FIRTransactionOptions+Internal.h"
-#import "FIRTransactionOptions.h"
 
-#import "FirebaseCore/Extension/FIRAppInternal.h"
-#import "FirebaseCore/Extension/FIRComponentContainer.h"
-#import "FirebaseCore/Extension/FIRComponentType.h"
+#import "FirebaseCore/Sources/Private/FirebaseCoreInternal.h"
 #import "Firestore/Source/API/FIRCollectionReference+Internal.h"
 #import "Firestore/Source/API/FIRDocumentReference+Internal.h"
 #import "Firestore/Source/API/FIRListenerRegistration+Internal.h"
@@ -87,7 +83,6 @@ using firebase::firestore::util::ThrowIllegalState;
 using firebase::firestore::util::ThrowInvalidArgument;
 using firebase::firestore::util::kLogLevelDebug;
 using firebase::firestore::util::kLogLevelNotice;
-using firebase::firestore::util::StreamReadResult;
 
 using UserUpdateBlock = id _Nullable (^)(FIRTransaction *, NSError **);
 using UserTransactionCompletion = void (^)(id _Nullable, NSError *_Nullable);
@@ -207,31 +202,6 @@ NS_ASSUME_NONNULL_BEGIN
   }
 }
 
-- (void)setIndexConfigurationFromJSON:(NSString *)json
-                           completion:(nullable void (^)(NSError *_Nullable error))completion {
-  _firestore->SetIndexConfiguration(MakeString(json), MakeCallback(completion));
-}
-
-- (void)setIndexConfigurationFromStream:(NSInputStream *)stream
-                             completion:(nullable void (^)(NSError *_Nullable error))completion {
-  auto input = absl::make_unique<ByteStreamApple>(stream);
-  auto callback = MakeCallback(completion);
-
-  std::string json;
-  bool eof = false;
-  while (!eof) {
-    StreamReadResult result = input->Read(1024ul);
-    if (!result.ok()) {
-      callback(result.status());
-      return;
-    }
-    eof = result.eof();
-    json.append(std::move(result).ValueOrDie());
-  }
-
-  _firestore->SetIndexConfiguration(json, callback);
-}
-
 - (FIRCollectionReference *)collectionWithPath:(NSString *)collectionPath {
   if (!collectionPath) {
     ThrowInvalidArgument("Collection path cannot be nil.");
@@ -282,10 +252,9 @@ NS_ASSUME_NONNULL_BEGIN
   return [FIRWriteBatch writeBatchWithDataReader:self.dataReader writeBatch:_firestore->GetBatch()];
 }
 
-- (void)runTransactionWithOptions:(FIRTransactionOptions *_Nullable)options
-                            block:(UserUpdateBlock)updateBlock
-                    dispatchQueue:(dispatch_queue_t)queue
-                       completion:(UserTransactionCompletion)completion {
+- (void)runTransactionWithBlock:(UserUpdateBlock)updateBlock
+                  dispatchQueue:(dispatch_queue_t)queue
+                     completion:(UserTransactionCompletion)completion {
   if (!updateBlock) {
     ThrowInvalidArgument("Transaction block cannot be nil.");
   }
@@ -364,37 +333,21 @@ NS_ASSUME_NONNULL_BEGIN
     result_capture->HandleFinalStatus(status);
   };
 
-  int max_attempts = [FIRTransactionOptions defaultMaxAttempts];
-  if (options) {
-    // Note: The cast of `maxAttempts` from `NSInteger` to `int` is safe (i.e. lossless) because
-    // `FIRTransactionOptions` does not allow values greater than `INT32_MAX` to be set.
-    max_attempts = static_cast<int>(options.maxAttempts);
-  }
-
-  _firestore->RunTransaction(std::move(internalUpdateBlock), std::move(objcTranslator),
-                             max_attempts);
+  _firestore->RunTransaction(std::move(internalUpdateBlock), std::move(objcTranslator));
 }
 
 - (void)runTransactionWithBlock:(id _Nullable (^)(FIRTransaction *, NSError **error))updateBlock
                      completion:
                          (void (^)(id _Nullable result, NSError *_Nullable error))completion {
-  [self runTransactionWithOptions:nil block:updateBlock completion:completion];
-}
-
-- (void)runTransactionWithOptions:(FIRTransactionOptions *_Nullable)options
-                            block:(id _Nullable (^)(FIRTransaction *, NSError **))updateBlock
-                       completion:
-                           (void (^)(id _Nullable result, NSError *_Nullable error))completion {
   static dispatch_queue_t transactionDispatchQueue;
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
     transactionDispatchQueue = dispatch_queue_create("com.google.firebase.firestore.transaction",
                                                      DISPATCH_QUEUE_CONCURRENT);
   });
-  [self runTransactionWithOptions:options
-                            block:updateBlock
-                    dispatchQueue:transactionDispatchQueue
-                       completion:completion];
+  [self runTransactionWithBlock:updateBlock
+                  dispatchQueue:transactionDispatchQueue
+                     completion:completion];
 }
 
 + (void)enableLogging:(BOOL)logging {

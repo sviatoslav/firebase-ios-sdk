@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'FirebaseFirestore'
-  s.version          = '9.6.0'
+  s.version          = '8.15.0'
   s.summary          = 'Google Cloud Firestore'
 
   s.description      = <<-DESC
@@ -8,7 +8,7 @@ Google Cloud Firestore is a NoSQL document database built for automatic scaling,
                        DESC
 
   s.homepage         = 'https://developers.google.com/'
-  s.license          = { :type => 'Apache-2.0', :file => 'Firestore/LICENSE' }
+  s.license          = { :type => 'Apache', :file => 'Firestore/LICENSE' }
   s.authors          = 'Google, Inc.'
 
   s.source           = {
@@ -19,8 +19,6 @@ Google Cloud Firestore is a NoSQL document database built for automatic scaling,
   s.ios.deployment_target = '10.0'
   s.osx.deployment_target = '10.12'
   s.tvos.deployment_target = '10.0'
-
-  s.swift_version = '5.3'
 
   s.cocoapods_version = '>= 1.4.0'
   s.prefix_header_file = false
@@ -44,14 +42,14 @@ Google Cloud Firestore is a NoSQL document database built for automatic scaling,
   # version wins in the global header map. The benefit of keeping them here is
   # that "quick open" by filename in Xcode will continue to work.
   s.source_files = [
-    'FirebaseAppCheck/Interop/*.h',
-    'FirebaseCore/Extension/*.h',
+    'FirebaseAppCheck/Sources/Interop/*.h',
+    'FirebaseCore/Sources/Private/*.h',
     'Firestore/Source/Public/FirebaseFirestore/*.h',
     'Firestore/Source/**/*.{m,mm}',
     'Firestore/Protos/nanopb/**/*.cc',
     'Firestore/core/include/**/*.{cc,mm}',
     'Firestore/core/src/**/*.{cc,mm}',
-    'FirebaseAuth/Interop/*.h',
+    'Interop/Auth/Public/*.h',
   ]
 
   # Internal headers that aren't necessarily globally unique. Most C++ internal
@@ -88,7 +86,7 @@ Google Cloud Firestore is a NoSQL document database built for automatic scaling,
     'Firestore/core/src/util/secure_random_openssl.cc'
   ]
 
-  s.dependency 'FirebaseCore', '~> 9.0'
+  s.dependency 'FirebaseCore', '~> 8.0'
 
   abseil_version = '~> 1.20211102.0'
   s.dependency 'abseil/algorithm', abseil_version
@@ -102,7 +100,7 @@ Google Cloud Firestore is a NoSQL document database built for automatic scaling,
 
   s.dependency 'gRPC-C++', '~> 1.44.0'
   s.dependency 'leveldb-library', '~> 1.22'
-  s.dependency 'nanopb', '>= 2.30908.0', '< 2.30910.0'
+  s.dependency 'nanopb', '~> 2.30908.0'
 
   s.ios.frameworks = 'SystemConfiguration', 'UIKit'
   s.osx.frameworks = 'SystemConfiguration'

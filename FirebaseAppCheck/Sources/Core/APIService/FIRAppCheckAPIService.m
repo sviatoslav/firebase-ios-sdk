@@ -25,7 +25,7 @@
 #import "FirebaseAppCheck/Sources/Core/Errors/FIRAppCheckErrorUtil.h"
 #import "FirebaseAppCheck/Sources/Core/FIRAppCheckLogger.h"
 
-#import "FirebaseCore/Extension/FirebaseCoreInternal.h"
+#import "FirebaseCore/Sources/Private/FirebaseCoreInternal.h"
 
 #import <GoogleUtilities/GULURLSessionDataResponse.h>
 #import <GoogleUtilities/NSURLSession+GULPromises.h>
@@ -33,17 +33,19 @@
 NS_ASSUME_NONNULL_BEGIN
 
 static NSString *const kAPIKeyHeaderKey = @"X-Goog-Api-Key";
-static NSString *const kHeartbeatKey = @"X-firebase-client";
+static NSString *const kHeartbeatKey = @"X-firebase-client-log-type";
+static NSString *const kHeartbeatStorageTag = @"fire-app-check";
+static NSString *const kUserAgentKey = @"X-firebase-client";
 static NSString *const kBundleIdKey = @"X-Ios-Bundle-Identifier";
 
-static NSString *const kDefaultBaseURL = @"https://firebaseappcheck.googleapis.com/v1";
+static NSString *const kDefaultBaseURL = @"https://firebaseappcheck.googleapis.com/v1beta";
 
 @interface FIRAppCheckAPIService ()
 
 @property(nonatomic, readonly) NSURLSession *URLSession;
 @property(nonatomic, readonly) NSString *APIKey;
+@property(nonatomic, readonly) NSString *projectID;
 @property(nonatomic, readonly) NSString *appID;
-@property(nonatomic, readonly) id<FIRHeartbeatLoggerProtocol> heartbeatLogger;
 
 @end
 
@@ -54,26 +56,26 @@ static NSString *const kDefaultBaseURL = @"https://firebaseappcheck.googleapis.c
 
 - (instancetype)initWithURLSession:(NSURLSession *)session
                             APIKey:(NSString *)APIKey
-                             appID:(NSString *)appID
-                   heartbeatLogger:(id<FIRHeartbeatLoggerProtocol>)heartbeatLogger {
+                         projectID:(NSString *)projectID
+                             appID:(NSString *)appID {
   return [self initWithURLSession:session
                            APIKey:APIKey
+                        projectID:projectID
                             appID:appID
-                  heartbeatLogger:heartbeatLogger
                           baseURL:kDefaultBaseURL];
 }
 
 - (instancetype)initWithURLSession:(NSURLSession *)session
                             APIKey:(NSString *)APIKey
+                         projectID:(NSString *)projectID
                              appID:(NSString *)appID
-                   heartbeatLogger:(id<FIRHeartbeatLoggerProtocol>)heartbeatLogger
                            baseURL:(NSString *)baseURL {
   self = [super init];
   if (self) {
     _URLSession = session;
     _APIKey = APIKey;
+    _projectID = projectID;
     _appID = appID;
-    _heartbeatLogger = heartbeatLogger;
     _baseURL = baseURL;
   }
   return self;
@@ -110,8 +112,10 @@ static NSString *const kDefaultBaseURL = @"https://firebaseappcheck.googleapis.c
 
              [request setValue:self.APIKey forHTTPHeaderField:kAPIKeyHeaderKey];
 
-             [request setValue:FIRHeaderValueFromHeartbeatsPayload(
-                                   [self.heartbeatLogger flushHeartbeatsIntoPayload])
+             [request setValue:[FIRApp firebaseUserAgent] forHTTPHeaderField:kUserAgentKey];
+
+             [request setValue:@([FIRHeartbeatInfo heartbeatCodeForTag:kHeartbeatStorageTag])
+                                   .stringValue
                  forHTTPHeaderField:kHeartbeatKey];
 
              [request setValue:[[NSBundle mainBundle] bundleIdentifier]

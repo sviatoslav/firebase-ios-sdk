@@ -48,7 +48,6 @@ class QueryEngine;
 
 namespace model {
 class Mutation;
-class FieldIndex;
 }  // namespace model
 
 namespace remote {
@@ -144,10 +143,9 @@ class FirestoreClient : public std::enable_shared_from_this<FirestoreClient> {
                       util::StatusCallback callback);
 
   /**
-   * Tries to execute the transaction in update_callback up to max_attempts
-   * times.
+   * Tries to execute the transaction in update_callback up to retries times.
    */
-  void Transaction(int max_attempts,
+  void Transaction(int retries,
                    TransactionUpdateCallback update_callback,
                    TransactionResultCallback result_callback);
 
@@ -177,8 +175,6 @@ class FirestoreClient : public std::enable_shared_from_this<FirestoreClient> {
     return user_executor_;
   }
 
-  void ConfigureFieldIndexes(std::vector<model::FieldIndex> parsed_indexes);
-
   void LoadBundle(std::unique_ptr<util::ByteStream> bundle_data,
                   std::shared_ptr<api::LoadBundleTask> result_task);
 
@@ -207,17 +203,7 @@ class FirestoreClient : public std::enable_shared_from_this<FirestoreClient> {
 
   void TerminateInternal();
 
-  /**
-   * Schedules a callback to try running LRU garbage collection. Reschedules
-   * itself after the GC has run.
-   */
   void ScheduleLruGarbageCollection();
-
-  /**
-   * Schedules a callback to try running index backfiller. Reschedules
-   * itself after the backfiller has run.
-   */
-  void ScheduleIndexBackfiller();
 
   DatabaseInfo database_info_;
   std::shared_ptr<credentials::AppCheckCredentialsProvider>
@@ -244,12 +230,12 @@ class FirestoreClient : public std::enable_shared_from_this<FirestoreClient> {
   std::unique_ptr<SyncEngine> sync_engine_;
   std::unique_ptr<EventManager> event_manager_;
 
+  std::chrono::milliseconds initial_gc_delay_ = std::chrono::minutes(1);
+  std::chrono::milliseconds regular_gc_delay_ = std::chrono::minutes(5);
   bool gc_has_run_ = false;
-  bool backfiller_has_run_ = false;
   bool credentials_initialized_ = false;
   local::LruDelegate* _Nullable lru_delegate_;
   util::DelayedOperation lru_callback_;
-  util::DelayedOperation backfiller_callback_;
 };
 
 }  // namespace core

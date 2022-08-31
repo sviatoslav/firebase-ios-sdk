@@ -73,11 +73,12 @@ enum CocoaPodUtils {
 
     /// The debug description as required by `CustomDebugStringConvertible`.
     var debugDescription: String {
+      var desc = name
       if let version = version {
-        return "\(name) v\(version)"
-      } else {
-        return name
+        desc.append(" v\(version)")
       }
+
+      return desc
     }
   }
 
@@ -480,13 +481,10 @@ enum CocoaPodUtils {
 
     // Loop through the subspecs passed in and use the actual Pod name.
     for pod in pods {
-      let rootPod = String(pod.name.split(separator: "/").first!)
-
+      let podspec = String(pod.name.split(separator: "/")[0] + ".podspec")
       // Check if we want to use a local version of the podspec.
       if let localURL = localPodspecPath,
-         let pathURL = localPodspecPath?.appendingPathComponent("\(rootPod).podspec").path,
-         FileManager.default.fileExists(atPath: pathURL),
-         isSourcePodspec(pathURL) {
+         FileManager.default.fileExists(atPath: localURL.appendingPathComponent(podspec).path) {
         podfile += "  pod '\(pod.name)', :path => '\(localURL.path)'"
       } else if let podVersion = pod.version {
         // To support Firebase patch versions in the Firebase zip distribution, allow patch updates
@@ -532,11 +530,6 @@ enum CocoaPodUtils {
         if podspec == "FirebaseInstallations.podspec" ||
           podspec == "FirebaseCoreDiagnostics.podspec" ||
           podspec == "FirebaseCore.podspec" ||
-          podspec == "FirebaseCoreExtension.podspec" ||
-          podspec == "FirebaseCoreInternal.podspec" ||
-          podspec == "FirebaseAppCheck.podspec" ||
-          podspec == "FirebaseAuth.podspec" ||
-          podspec == "FirebaseMessaging.podspec" ||
           podspec == "FirebaseRemoteConfig.podspec" ||
           podspec == "FirebaseABTesting.podspec" {
           let podName = podspec.replacingOccurrences(of: ".podspec", with: "")
@@ -546,16 +539,6 @@ enum CocoaPodUtils {
     }
     podfile += "end"
     return podfile
-  }
-
-  private static func isSourcePodspec(_ podspecPath: String) -> Bool {
-    do {
-      let contents = try String(contentsOfFile: podspecPath, encoding: .utf8)
-      // The presence of ".vendored_frameworks" in a podspec indicates a binary pod.
-      return contents.range(of: ".vendored_frameworks") == nil
-    } catch {
-      fatalError("Could not read \(podspecPath): \(error)")
-    }
   }
 
   /// Write a podfile that contains all the pods passed in to the directory passed in with a name

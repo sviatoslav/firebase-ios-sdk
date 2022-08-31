@@ -42,7 +42,7 @@ typedef NS_ENUM(NSInteger, FIRHTTPMethod) {
 // clang-format on
 
 /**
- * Instances of `HTTPMetric` can be used to record HTTP network request information.
+ * FIRHTTPMetric object can be used to make the SDK record information about a HTTP network request.
  */
 NS_SWIFT_NAME(HTTPMetric)
 NS_EXTENSION_UNAVAILABLE("Firebase Performance is not supported for extensions.")
@@ -57,7 +57,7 @@ NS_EXTENSION_UNAVAILABLE("Firebase Performance is not supported for extensions."
                           HTTPMethod:(FIRHTTPMethod)httpMethod NS_SWIFT_NAME(init(url:httpMethod:));
 
 /**
- * Use `init(url:httpMethod:)` for Swift and `initWithURL:HTTPMethod:` for Objective-C.
+ * Use `initWithURL:HTTPMethod:` for Objective-C and `init(url:httpMethod:)` for Swift.
  */
 - (nonnull instancetype)init NS_UNAVAILABLE;
 

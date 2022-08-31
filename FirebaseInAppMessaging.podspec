@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'FirebaseInAppMessaging'
-  s.version          = '9.6.0-beta'
+  s.version          = '8.15.0-beta'
   s.summary          = 'Firebase In-App Messaging for iOS'
 
   s.description      = <<-DESC
@@ -9,7 +9,7 @@ See more product details at https://firebase.google.com/products/in-app-messagin
                        DESC
 
   s.homepage         = 'https://firebase.google.com'
-  s.license          = { :type => 'Apache-2.0', :file => 'LICENSE' }
+  s.license          = { :type => 'Apache', :file => 'LICENSE' }
   s.authors          = 'Google, Inc.'
 
   s.source           = {
@@ -19,8 +19,6 @@ See more product details at https://firebase.google.com/products/in-app-messagin
   s.social_media_url = 'https://twitter.com/Firebase'
   s.ios.deployment_target = '10.0'
   s.tvos.deployment_target = '10.0'
-
-  s.swift_version = '5.3'
 
   s.cocoapods_version = '>= 1.4.0'
   s.prefix_header_file = false
@@ -40,7 +38,7 @@ See more product details at https://firebase.google.com/products/in-app-messagin
 	base_dir + "Sources/Util/**/*.[cmh]",
     'Interop/Analytics/Public/*.h',
     'FirebaseABTesting/Sources/Private/*.h',
-    'FirebaseCore/Extension/*.h',
+    'FirebaseCore/Sources/Private/*.h',
     'FirebaseInstallations/Source/Library/Private/*.h',
   ]
 
@@ -57,7 +55,7 @@ See more product details at https://firebase.google.com/products/in-app-messagin
 	base_dir + "Sources/Util/**/*.[cmh]",
     'Interop/Analytics/Public/*.h',
     'FirebaseABTesting/Sources/Private/*.h',
-    'FirebaseCore/Extension/*.h',
+    'FirebaseCore/Sources/Private/*.h',
     'FirebaseInstallations/Source/Library/Private/*.h',
   ]
 
@@ -78,11 +76,11 @@ See more product details at https://firebase.google.com/products/in-app-messagin
 
   s.framework = 'UIKit'
 
-  s.dependency 'FirebaseCore', '~> 9.0'
-  s.dependency 'FirebaseInstallations', '~> 9.0'
-  s.dependency 'FirebaseABTesting', '~> 9.0'
+  s.dependency 'FirebaseCore', '~> 8.0'
+  s.dependency 'FirebaseInstallations', '~> 8.0'
+  s.dependency 'FirebaseABTesting', '~> 8.0'
   s.dependency 'GoogleUtilities/Environment', '~> 7.7'
-  s.dependency 'nanopb', '>= 2.30908.0', '< 2.30910.0'
+  s.dependency 'nanopb', '~> 2.30908.0'
 
   s.test_spec 'unit' do |unit_tests|
       unit_tests.scheme = { :code_coverage => true }

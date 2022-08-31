@@ -13,26 +13,22 @@
 // limitations under the License.
 
 #import "Crashlytics/UnitTests/Mocks/FIRCLSMockOnDemandModel.h"
-#import "Crashlytics/Crashlytics/Models/FIRCLSFileManager.h"
 
 @interface FIRCLSMockOnDemandModel ()
 
 @property(nonatomic, readonly) FIRCLSSettings *settings;
-@property(nonatomic, readonly) FIRCLSFileManager *fileManager;
 
 @end
 
 @implementation FIRCLSMockOnDemandModel
 
 - (instancetype)initWithFIRCLSSettings:(FIRCLSSettings *)settings
-                           fileManager:(FIRCLSFileManager *)fileManager
                             sleepBlock:(void (^)(int))sleepBlock {
-  self = [super initWithFIRCLSSettings:settings fileManager:fileManager];
+  self = [super initWithFIRCLSSettings:settings];
   if (!self) {
     return nil;
   }
   _settings = settings;
-  _fileManager = fileManager;
   _sleepBlock = sleepBlock;
   return self;
 }
@@ -50,17 +46,6 @@
 
 - (void)implementOnDemandUploadDelay:(int)delay {
   _sleepBlock(delay);
-}
-
-- (NSString *)recordOnDemandExceptionWithModel:(FIRExceptionModel *)exceptionModel {
-  int randomSuffix = arc4random_uniform(10000);
-  NSString *activePath = [_fileManager activePath];
-  NSString *exceptionName =
-      [activePath stringByAppendingPathComponent:[NSString stringWithFormat:@"test_exception_%d",
-                                                                            randomSuffix]];
-  NSData *data = [exceptionName dataUsingEncoding:NSUTF8StringEncoding];
-  [self.fileManager createFileAtPath:exceptionName contents:data attributes:nil];
-  return exceptionName;
 }
 
 @end

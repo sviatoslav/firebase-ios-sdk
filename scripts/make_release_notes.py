@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Converts GitHub flavored markdown changelogs to release notes.
+"""Converts github flavored markdown changelogs to release notes.
 """
 
 import argparse

@@ -23,7 +23,7 @@
 #import "FirebaseABTesting/Tests/Unit/ABTFakeFIRAConditionalUserPropertyController.h"
 #import "FirebaseABTesting/Tests/Unit/ABTTestUniversalConstants.h"
 #import "FirebaseABTesting/Tests/Unit/Utilities/ABTTestUtilities.h"
-#import "FirebaseCore/Extension/FirebaseCoreInternal.h"
+#import "FirebaseCore/Sources/Private/FirebaseCoreInternal.h"
 
 @interface ABTConditionalUserPropertyController (ExposedForTest)
 - (NSInteger)maxNumberOfExperimentsOfOrigin:(NSString *)origin;

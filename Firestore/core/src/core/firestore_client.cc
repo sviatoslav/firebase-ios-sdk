@@ -45,7 +45,6 @@
 #include "Firestore/core/src/model/database_id.h"
 #include "Firestore/core/src/model/document.h"
 #include "Firestore/core/src/model/document_set.h"
-#include "Firestore/core/src/model/field_index.h"
 #include "Firestore/core/src/model/mutation.h"
 #include "Firestore/core/src/remote/connectivity_monitor.h"
 #include "Firestore/core/src/remote/datastore.h"
@@ -85,7 +84,6 @@ using local::QueryResult;
 using model::Document;
 using model::DocumentKeySet;
 using model::DocumentMap;
-using model::FieldIndex;
 using model::Mutation;
 using model::OnlineState;
 using remote::ConnectivityMonitor;
@@ -103,19 +101,7 @@ using util::StatusOrCallback;
 using util::ThrowIllegalState;
 using util::TimerId;
 
-namespace {
-
 static const size_t kMaxConcurrentLimboResolutions = 100;
-
-static const auto kInitialGCDelay = std::chrono::minutes(1);
-static const auto kRegularGCDelay = std::chrono::minutes(5);
-
-/** How long we wait to try running index backfill after SDK initialization. */
-static const auto kInitialBackfillDelay = std::chrono::milliseconds(15);
-/** Minimum amount of time between backfill checks, after the first one. */
-static const auto kRegularBackfillDelay = std::chrono::milliseconds(1);
-
-}  // namespace
 
 std::shared_ptr<FirestoreClient> FirestoreClient::Create(
     const DatabaseInfo& database_info,
@@ -250,8 +236,6 @@ void FirestoreClient::Initialize(const User& user, const Settings& settings) {
   // refilling mutation queue, etc.) so must be started after LocalStore.
   local_store_->Start();
   remote_store_->Start();
-
-  ScheduleIndexBackfiller();
 }
 
 FirestoreClient::~FirestoreClient() {
@@ -312,8 +296,6 @@ void FirestoreClient::TerminateInternal() {
   // If we've scheduled LRU garbage collection, cancel it.
   lru_callback_.Cancel();
 
-  backfiller_callback_.Cancel();
-
   remote_store_->Shutdown();
   persistence_->Shutdown();
 
@@ -325,27 +307,19 @@ void FirestoreClient::TerminateInternal() {
   remote_store_.reset();
 }
 
+/**
+ * Schedules a callback to try running LRU garbage collection. Reschedules
+ * itself after the GC has run.
+ */
 void FirestoreClient::ScheduleLruGarbageCollection() {
   std::chrono::milliseconds delay =
-      gc_has_run_ ? kRegularGCDelay : kInitialGCDelay;
+      gc_has_run_ ? regular_gc_delay_ : initial_gc_delay_;
 
   lru_callback_ = worker_queue_->EnqueueAfterDelay(
       delay, TimerId::GarbageCollectionDelay, [this] {
         local_store_->CollectGarbage(lru_delegate_->garbage_collector());
         gc_has_run_ = true;
         ScheduleLruGarbageCollection();
-      });
-}
-
-void FirestoreClient::ScheduleIndexBackfiller() {
-  std::chrono::milliseconds delay =
-      backfiller_has_run_ ? kRegularBackfillDelay : kInitialBackfillDelay;
-
-  backfiller_callback_ = worker_queue_->EnqueueAfterDelay(
-      delay, TimerId::IndexBackfillDelay, [this] {
-        local_store_->Backfill();
-        backfiller_has_run_ = true;
-        ScheduleIndexBackfiller();
       });
 }
 
@@ -517,7 +491,7 @@ void FirestoreClient::WriteMutations(std::vector<Mutation>&& mutations,
   });
 }
 
-void FirestoreClient::Transaction(int max_attempts,
+void FirestoreClient::Transaction(int retries,
                                   TransactionUpdateCallback update_callback,
                                   TransactionResultCallback result_callback) {
   VerifyNotTerminated();
@@ -529,8 +503,8 @@ void FirestoreClient::Transaction(int max_attempts,
     }
   };
 
-  worker_queue_->Enqueue([this, max_attempts, update_callback, async_callback] {
-    sync_engine_->Transaction(max_attempts, worker_queue_,
+  worker_queue_->Enqueue([this, retries, update_callback, async_callback] {
+    sync_engine_->Transaction(retries, worker_queue_,
                               std::move(update_callback),
                               std::move(async_callback));
   });
@@ -547,14 +521,6 @@ void FirestoreClient::RemoveSnapshotsInSyncListener(
     const std::shared_ptr<EventListener<Empty>>& user_listener) {
   worker_queue_->Enqueue([this, user_listener] {
     event_manager_->RemoveSnapshotsInSyncListener(user_listener);
-  });
-}
-
-void FirestoreClient::ConfigureFieldIndexes(
-    std::vector<FieldIndex> parsed_indexes) {
-  VerifyNotTerminated();
-  worker_queue_->Enqueue([this, parsed_indexes] {
-    local_store_->ConfigureFieldIndexes(std::move(parsed_indexes));
   });
 }
 

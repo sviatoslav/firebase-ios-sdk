@@ -43,13 +43,11 @@
 @property(nonatomic, readwrite, strong) FIRMessagingAPNSInfo *currentAPNSInfo;
 @property(nonatomic, readwrite) FIRInstallations *installations;
 
-@property(readonly) id<FIRHeartbeatLoggerProtocol> heartbeatLogger;
-
 @end
 
 @implementation FIRMessagingTokenManager
 
-- (instancetype)initWithHeartbeatLogger:(id<FIRHeartbeatLoggerProtocol>)heartbeatLogger {
+- (instancetype)init {
   self = [super init];
   if (self) {
     _tokenStore = [[FIRMessagingTokenStore alloc] init];
@@ -57,7 +55,6 @@
     [self resetCredentialsIfNeeded];
     [self configureTokenOperations];
     _installations = [FIRInstallations installations];
-    _heartbeatLogger = heartbeatLogger;
   }
   return self;
 }
@@ -536,8 +533,7 @@
                                                                   scope:scope
                                                                 options:options
                                                      checkinPreferences:checkinPreferences
-                                                             instanceID:instanceID
-                                                        heartbeatLogger:self.heartbeatLogger];
+                                                             instanceID:instanceID];
   return operation;
 }
 
@@ -553,8 +549,7 @@
                                                                    scope:scope
                                                       checkinPreferences:checkinPreferences
                                                               instanceID:instanceID
-                                                                  action:action
-                                                         heartbeatLogger:self.heartbeatLogger];
+                                                                  action:action];
   return operation;
 }
 

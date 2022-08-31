@@ -20,7 +20,8 @@
 #include <future>  // NOLINT(build/c++11)
 #include <memory>
 
-#import "FirebaseAuth/Interop/FIRAuthInterop.h"
+#import "FirebaseCore/Sources/Private/FirebaseCoreInternal.h"
+#import "Interop/Auth/Public/FIRAuthInterop.h"
 
 #include "Firestore/core/src/util/statusor.h"
 #include "Firestore/core/src/util/string_apple.h"

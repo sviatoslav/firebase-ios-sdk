@@ -14,17 +14,6 @@
  * limitations under the License.
  */
 
-#import <TargetConditionals.h>
-
-// Tests that use the Keychain require a host app and Swift Package Manager
-// does not support adding a host app to test targets.
-#if !SWIFT_PACKAGE
-
-// Skip keychain tests on Catalyst and macOS. Tests are skipped because they
-// involve interactions with the keychain that require a provisioning profile.
-// See go/firebase-macos-keychain-popups for more details.
-#if !TARGET_OS_MACCATALYST && !TARGET_OS_OSX
-
 #import <XCTest/XCTest.h>
 
 #import "FBLPromise+Testing.h"
@@ -35,15 +24,11 @@
 #import "FirebaseAppCheck/Sources/DeviceCheckProvider/API/FIRDeviceCheckAPIService.h"
 #import "FirebaseAppCheck/Sources/Public/FirebaseAppCheck/FIRAppCheckToken.h"
 
-#import "FirebaseCore/Extension/FirebaseCoreInternal.h"
-
 @interface FIRDeviceCheckAPIServiceE2ETests : XCTestCase
 @property(nonatomic) FIRDeviceCheckAPIService *deviceCheckAPIService;
 @property(nonatomic) FIRAppCheckAPIService *APIService;
 @property(nonatomic) NSURLSession *URLSession;
 @end
-
-// TODO(ncooke3): Fix these tests up and get them running on CI.
 
 @implementation FIRDeviceCheckAPIServiceE2ETests
 
@@ -51,13 +36,10 @@
   self.URLSession = [NSURLSession
       sessionWithConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration]];
   FIROptions *options = [self firebaseTestOptions];
-  FIRHeartbeatLogger *heartbeatLogger =
-      [[FIRHeartbeatLogger alloc] initWithAppID:options.googleAppID];
-
   self.APIService = [[FIRAppCheckAPIService alloc] initWithURLSession:self.URLSession
                                                                APIKey:options.APIKey
-                                                                appID:options.googleAppID
-                                                      heartbeatLogger:heartbeatLogger];
+                                                            projectID:options.projectID
+                                                                appID:options.googleAppID];
   self.deviceCheckAPIService =
       [[FIRDeviceCheckAPIService alloc] initWithAPIService:self.APIService
                                                  projectID:options.projectID
@@ -95,7 +77,3 @@
 }
 
 @end
-
-#endif  // !TARGET_OS_MACCATALYST && !TARGET_OS_OSX
-
-#endif  // !SWIFT_PACKAGE

@@ -14,7 +14,7 @@
 
 #import "FirebasePerformance/Tests/Unit/Fakes/FIRAppFake.h"
 
-#import "FirebaseCore/Extension/FirebaseCoreInternal.h"
+#import "FirebaseCore/Sources/Private/FirebaseCoreInternal.h"
 
 @implementation FIRAppFake
 

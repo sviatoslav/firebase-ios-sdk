@@ -40,7 +40,7 @@
 #import "FirebaseAppCheck/Sources/Core/Errors/FIRAppCheckErrorUtil.h"
 #import "FirebaseAppCheck/Sources/Core/Errors/FIRAppCheckHTTPError.h"
 
-#import "FirebaseCore/Extension/FirebaseCoreInternal.h"
+#import "FirebaseCore/Sources/Private/FirebaseCoreInternal.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -146,8 +146,8 @@ NS_ASSUME_NONNULL_BEGIN
   FIRAppCheckAPIService *APIService =
       [[FIRAppCheckAPIService alloc] initWithURLSession:URLSession
                                                  APIKey:app.options.APIKey
-                                                  appID:app.options.googleAppID
-                                        heartbeatLogger:app.heartbeatLogger];
+                                              projectID:app.options.projectID
+                                                  appID:app.options.googleAppID];
 
   FIRAppAttestAPIService *appAttestAPIService =
       [[FIRAppAttestAPIService alloc] initWithAPIService:APIService

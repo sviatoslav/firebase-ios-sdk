@@ -27,7 +27,15 @@ num_sdk="${#NON_FIREBASE_SDKS[@]}"
 echo "[" >> "${ZIP_POD_JSON}"
 for sdk in "${NON_FIREBASE_SDKS[@]}"
 do
-  echo "{\"name\":\"${sdk}\"}" >>  "${ZIP_POD_JSON}"
+  if [ ${sdk} == "FirebaseFirestoreSwift" ]; then
+    echo "{\"name\":\"FirebaseFirestoreSwift\", \"version\" : \"> 8.2-beta\"}" >>  "${ZIP_POD_JSON}"
+  elif [ ${sdk} == "FirebaseStorageSwift" ]; then
+    echo "{\"name\":\"FirebaseStorageSwift\", \"version\" : \"> 8.12-beta\"}" >>  "${ZIP_POD_JSON}"
+  elif [ ${sdk} == "FirebaseRemoteConfigSwift" ]; then
+    echo "{\"name\":\"FirebaseRemoteConfigSwift\", \"version\" : \"> 8.12-beta\"}" >>  "${ZIP_POD_JSON}"
+  else
+    echo "{\"name\":\"${sdk}\"}" >>  "${ZIP_POD_JSON}"
+  fi
   if [ "$num_sdk" -ne 1 ]; then
     echo ",">>  "${ZIP_POD_JSON}"
   fi

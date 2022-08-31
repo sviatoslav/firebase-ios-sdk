@@ -20,8 +20,6 @@
 @class GULURLSessionDataResponse;
 @class FIRAppCheckToken;
 
-@protocol FIRHeartbeatLoggerProtocol;
-
 NS_ASSUME_NONNULL_BEGIN
 
 @protocol FIRAppCheckAPIServiceProtocol <NSObject>
@@ -41,17 +39,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface FIRAppCheckAPIService : NSObject <FIRAppCheckAPIServiceProtocol>
 
-/**
- * The default initializer.
- * @param session The URL session used to make network requests.
- * @param APIKey The Firebase project API key (see `FIROptions.APIKey`).
- * @param appID The Firebase app ID (see `FIROptions.googleAppID`).
- * @param heartbeatLogger The heartbeat logger used to populate heartbeat data in request headers.
- */
 - (instancetype)initWithURLSession:(NSURLSession *)session
                             APIKey:(NSString *)APIKey
-                             appID:(NSString *)appID
-                   heartbeatLogger:(id<FIRHeartbeatLoggerProtocol>)heartbeatLogger;
+                         projectID:(NSString *)projectID
+                             appID:(NSString *)appID;
 
 @end
 

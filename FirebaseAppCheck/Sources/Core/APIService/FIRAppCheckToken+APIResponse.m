@@ -27,9 +27,6 @@
 
 #import <GoogleUtilities/GULURLSessionDataResponse.h>
 
-static NSString *const kResponseFieldToken = @"token";
-static NSString *const kResponseFieldTTL = @"ttl";
-
 @implementation FIRAppCheckToken (APIResponse)
 
 - (nullable instancetype)initWithTokenExchangeResponse:(NSData *)response
@@ -57,19 +54,18 @@ static NSString *const kResponseFieldTTL = @"ttl";
 - (nullable instancetype)initWithResponseDict:(NSDictionary<NSString *, id> *)responseDict
                                   requestDate:(NSDate *)requestDate
                                         error:(NSError **)outError {
-  NSString *token = responseDict[kResponseFieldToken];
+  NSString *token = responseDict[@"attestationToken"];
   if (![token isKindOfClass:[NSString class]]) {
     FIRAppCheckSetErrorToPointer(
-        [FIRAppCheckErrorUtil appCheckTokenResponseErrorWithMissingField:kResponseFieldToken],
+        [FIRAppCheckErrorUtil appCheckTokenResponseErrorWithMissingField:@"attestationToken"],
         outError);
     return nil;
   }
 
-  NSString *timeToLiveString = responseDict[kResponseFieldTTL];
+  NSString *timeToLiveString = responseDict[@"ttl"];
   if (![token isKindOfClass:[NSString class]] || token.length <= 0) {
     FIRAppCheckSetErrorToPointer(
-        [FIRAppCheckErrorUtil appCheckTokenResponseErrorWithMissingField:kResponseFieldTTL],
-        outError);
+        [FIRAppCheckErrorUtil appCheckTokenResponseErrorWithMissingField:@"ttl"], outError);
     return nil;
   }
 
@@ -80,8 +76,7 @@ static NSString *const kResponseFieldTTL = @"ttl";
 
   if (secondsToLive == 0) {
     FIRAppCheckSetErrorToPointer(
-        [FIRAppCheckErrorUtil appCheckTokenResponseErrorWithMissingField:kResponseFieldTTL],
-        outError);
+        [FIRAppCheckErrorUtil appCheckTokenResponseErrorWithMissingField:@"ttl"], outError);
     return nil;
   }
 

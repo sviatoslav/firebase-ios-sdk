@@ -21,10 +21,10 @@
 #import "Crashlytics/Crashlytics/Private/FIRCLSOnDemandModel_Private.h"
 #import "Crashlytics/UnitTests/Mocks/FIRAppFake.h"
 #import "Crashlytics/UnitTests/Mocks/FIRCLSMockExistingReportManager.h"
-#import "Crashlytics/UnitTests/Mocks/FIRCLSMockFileManager.h"
 #import "Crashlytics/UnitTests/Mocks/FIRCLSMockOnDemandModel.h"
 #import "Crashlytics/UnitTests/Mocks/FIRCLSMockReportUploader.h"
 #import "Crashlytics/UnitTests/Mocks/FIRCLSMockSettings.h"
+#import "Crashlytics/UnitTests/Mocks/FIRCLSTempMockFileManager.h"
 #import "Crashlytics/UnitTests/Mocks/FIRMockGDTCoreTransport.h"
 #import "Crashlytics/UnitTests/Mocks/FIRMockInstallations.h"
 
@@ -40,7 +40,7 @@
 @property(nonatomic, strong) FIRCLSExistingReportManager *existingReportManager;
 @property(nonatomic, strong) FIRCLSManagerData *managerData;
 @property(nonatomic, strong) FIRCLSDataCollectionArbiter *dataArbiter;
-@property(nonatomic, strong) FIRCLSMockFileManager *fileManager;
+@property(nonatomic, strong) FIRCLSTempMockFileManager *fileManager;
 @property(nonatomic, strong) FIRCLSMockReportUploader *mockReportUploader;
 @property(nonatomic, strong) FIRCLSMockSettings *mockSettings;
 
@@ -57,13 +57,12 @@
   id fakeApp = [[FIRAppFake alloc] init];
   self.dataArbiter = [[FIRCLSDataCollectionArbiter alloc] initWithApp:fakeApp withAppInfo:@{}];
 
-  self.fileManager = [[FIRCLSMockFileManager alloc] init];
+  self.fileManager = [[FIRCLSTempMockFileManager alloc] init];
 
   FIRCLSApplicationIdentifierModel *appIDModel = [[FIRCLSApplicationIdentifierModel alloc] init];
   _mockSettings = [[FIRCLSMockSettings alloc] initWithFileManager:self.fileManager
                                                        appIDModel:appIDModel];
   _onDemandModel = [[FIRCLSMockOnDemandModel alloc] initWithFIRCLSSettings:_mockSettings
-                                                               fileManager:_fileManager
                                                                 sleepBlock:^(int delay){
                                                                 }];
 
@@ -95,7 +94,6 @@
   FIRCLSInternalReport *report =
       [[FIRCLSInternalReport alloc] initWithPath:reportPath
                              executionIdentifier:@"TEST_EXECUTION_IDENTIFIER"];
-
   FIRCLSContextInitialize(report, self.mockSettings, self.fileManager);
 }
 
@@ -135,14 +133,14 @@
 
 - (void)testCompliesWithDataCollectionOff {
   FIRExceptionModel *exceptionModel = [self getTestExceptionModel];
-  XCTestExpectation *sleepComplete =
+  XCTestExpectation *testComplete =
       [[XCTestExpectation alloc] initWithDescription:@"complete test"];
 
   // Put an expectation in the sleep block so we can test the state of the queue.
   __weak FIRCLSOnDemandModelTests *weakSelf = self;
   [self setSleepBlock:^(int delay) {
     XCTAssertEqual(delay, 60 / self.mockSettings.onDemandUploadRate);
-    [weakSelf waitForExpectations:@[ sleepComplete ] timeout:1.0];
+    [weakSelf waitForExpectations:@[ testComplete ] timeout:1.0];
   }];
 
   BOOL success = [self.onDemandModel recordOnDemandExceptionIfQuota:exceptionModel
@@ -151,18 +149,14 @@
 
   // Should record but not submit a report.
   XCTAssertTrue(success);
-
   // We still count this as a recorded event if it was recorded but not submitted.
   XCTAssertEqual([self.onDemandModel recordedOnDemandExceptionCount], 1);
+  XCTAssertEqual([self contentsOfActivePath].count, 2);
   XCTAssertEqual(self.onDemandModel.getQueuedOperationsCount, 1);
+  XCTAssertEqual([self.onDemandModel.storedActiveReportPaths count], 1);
 
   // Fulfill the expectation so the sleep block completes.
-  [sleepComplete fulfill];
-  [self.managerData.onDemandModel.operationQueue waitUntilAllOperationsAreFinished];
-
-  XCTAssertEqual(self.onDemandModel.getQueuedOperationsCount, 0);
-  XCTAssertEqual([self contentsOfActivePath].count, 1);
-  XCTAssertEqual([self.onDemandModel.storedActiveReportPaths count], 1);
+  [testComplete fulfill];
 }
 
 - (void)testQuotaWithDataCollectionOff {
@@ -185,7 +179,7 @@
 
   XCTAssertEqual([self.managerData.onDemandModel recordedOnDemandExceptionCount],
                  FIRCLSMaxUnsentReports);
-  XCTAssertEqual([self contentsOfActivePath].count, FIRCLSMaxUnsentReports);
+  XCTAssertEqual([self contentsOfActivePath].count, FIRCLSMaxUnsentReports + 1);
   XCTAssertEqual([self.managerData.onDemandModel.storedActiveReportPaths count],
                  FIRCLSMaxUnsentReports);
 
@@ -194,8 +188,7 @@
                                                 asUrgent:YES];
   XCTAssertEqual([self.managerData.onDemandModel recordedOnDemandExceptionCount],
                  FIRCLSMaxUnsentReports);
-  [self.existingReportManager.operationQueue waitUntilAllOperationsAreFinished];
-  XCTAssertEqual([self contentsOfActivePath].count, 0);
+  XCTAssertEqual([self contentsOfActivePath].count, 1);
   XCTAssertEqual([self.managerData.onDemandModel.storedActiveReportPaths count], 0);
 }
 
@@ -241,7 +234,8 @@
 
 #pragma mark - Helpers
 - (NSArray *)contentsOfActivePath {
-  return [self.fileManager activePathContents];
+  return [[NSFileManager defaultManager] contentsOfDirectoryAtPath:self.fileManager.activePath
+                                                             error:nil];
 }
 
 - (FIRExceptionModel *)getTestExceptionModel {

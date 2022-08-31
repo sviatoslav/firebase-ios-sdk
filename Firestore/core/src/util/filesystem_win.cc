@@ -18,7 +18,7 @@
 
 #if defined(_WIN32)
 
-#include <shlobj.h>
+#include <Shlobj.h>
 #include <windows.h>
 
 #include <cerrno>

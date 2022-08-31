@@ -788,9 +788,9 @@ TEST(QueryTest, CanonicalIDs) {
                     .AddingOrderBy(OrderBy("name", "asc"))
                     .AddingOrderBy(OrderBy("score", "desc"))
                     .StartingAt(Bound::FromValue(Array("OAK", 1000),
-                                                 /* inclusive= */ true))
+                                                 /* is_before= */ true))
                     .EndingAt(Bound::FromValue(Array("SFO", 2000),
-                                               /* inclusive= */ true));
+                                               /* is_before= */ false));
   EXPECT_THAT(bounds, HasCanonicalId("airports|f:|ob:nameascscoredesc__name__"
                                      "desc|lb:b:OAK1000|ub:a:SFO2000"));
 }

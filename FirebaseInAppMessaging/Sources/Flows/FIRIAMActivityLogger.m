@@ -19,7 +19,7 @@
 
 #import <UIKit/UIKit.h>
 
-#import "FirebaseCore/Extension/FirebaseCoreInternal.h"
+#import "FirebaseCore/Sources/Private/FirebaseCoreInternal.h"
 
 #import "FirebaseInAppMessaging/Sources/FIRCore+InAppMessaging.h"
 #import "FirebaseInAppMessaging/Sources/Private/Flows/FIRIAMActivityLogger.h"
@@ -30,17 +30,13 @@ static NSString *const kIsSuccessArchiveKey = @"is_success";
 static NSString *const kTimeStampArchiveKey = @"timestamp";
 static NSString *const kDetailArchiveKey = @"detail";
 
-+ (BOOL)supportsSecureCoding {
-  return YES;
-}
-
 - (id)initWithCoder:(NSCoder *)decoder {
   self = [super init];
   if (self != nil) {
     _activityType = [decoder decodeIntegerForKey:kActiveTypeArchiveKey];
-    _timestamp = [decoder decodeObjectOfClass:[NSDate class] forKey:kTimeStampArchiveKey];
+    _timestamp = [decoder decodeObjectForKey:kTimeStampArchiveKey];
     _success = [decoder decodeBoolForKey:kIsSuccessArchiveKey];
-    _detail = [decoder decodeObjectOfClass:[NSString class] forKey:kDetailArchiveKey];
+    _detail = [decoder decodeObjectForKey:kDetailArchiveKey];
   }
   return self;
 }
@@ -154,23 +150,10 @@ static NSString *const kDetailArchiveKey = @"detail";
 
 - (void)loadFromCachePath:(NSString *)cacheFilePath {
   NSString *filePath = cacheFilePath == nil ? [self.class determineCacheFilePath] : cacheFilePath;
-  id fetchedActivityRecords;
-  NSData *data = [NSData dataWithContentsOfFile:filePath];
-  if (data) {
-    if (@available(macOS 10.13, iOS 11.0, tvOS 11.0, *)) {
-      fetchedActivityRecords = [NSKeyedUnarchiver
-          unarchivedObjectOfClasses:[NSSet setWithObjects:[FIRIAMActivityRecord class],
-                                                          [NSMutableArray class], nil]
-                           fromData:data
-                              error:nil];
-    } else {
-      // Fallback on earlier versions
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-      fetchedActivityRecords = [NSKeyedUnarchiver unarchiveObjectWithFile:filePath];
+  id fetchedActivityRecords = [NSKeyedUnarchiver unarchiveObjectWithFile:filePath];
 #pragma clang diagnostic pop
-    }
-  }
   if (fetchedActivityRecords) {
     @synchronized(self) {
       self.activityRecords = (NSMutableArray<FIRIAMActivityRecord *> *)fetchedActivityRecords;

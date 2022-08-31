@@ -26,9 +26,7 @@
 
 #import <XCTest/XCTest.h>
 
-@import HeartbeatLoggingTestUtils;
-
-#import "FirebaseCore/Extension/FirebaseCoreInternal.h"
+#import "FirebaseCore/Sources/Private/FirebaseCoreInternal.h"
 
 #import "FBLPromise+Testing.h"
 #import "FirebaseInstallations/Source/Tests/Utils/FIRInstallations+Tests.h"
@@ -52,21 +50,7 @@ static BOOL sFIRInstallationsFirebaseDefaultAppConfigured = NO;
     return;
   }
 
-  FIRApp *installationsApp = [FIRApp defaultApp];
-  self.installations = [FIRInstallations installationsWithApp:installationsApp];
-
-  // Remove the underlying heartbeat storage container to reset heartbeat data.
-  [FIRHeartbeatLoggingTestUtils removeUnderlyingHeartbeatStorageContainersAndReturnError:nil];
-  // Log a heartbeat with the Firebase app associated with `self.installations`.
-  // This ensures that each test starts with the heartbeat logger having a
-  // non-empty storage (this means there are heartbeats to send to the server).
-  //
-  // For each test that sends a network request, it is expected that the
-  // heartbeat logger's storage will be flushed into a payload that is included
-  // in the request. To confirm this occurs, those tests will assert that the
-  // heartbeat logger's storage is empty after calling API that performs
-  // the network request.
-  [installationsApp.heartbeatLogger log];
+  self.installations = [FIRInstallations installationsWithApp:[FIRApp defaultApp]];
 }
 
 - (void)tearDown {
@@ -75,7 +59,7 @@ static BOOL sFIRInstallationsFirebaseDefaultAppConfigured = NO;
   }];
 
   // Wait for any pending background job to be completed.
-  FBLWaitForPromisesWithTimeout(20);
+  FBLWaitForPromisesWithTimeout(10);
 
   [FIRApp resetApps];
 }
@@ -89,15 +73,6 @@ static BOOL sFIRInstallationsFirebaseDefaultAppConfigured = NO;
   NSString *FID2 = [self getFID];
 
   XCTAssertEqualObjects(FID1, FID2);
-
-  // The heartbeat logged during `-[FIRInstallationsIntegrationTests setUp]`
-  // should have been flushed and added to the resulting network request
-  // from the above Installations API call.
-  [self addTeardownBlock:^{
-    FBLWaitForPromisesWithTimeout(20);
-    XCTAssertNil(FIRHeaderValueFromHeartbeatsPayload(
-        [FIRApp.defaultApp.heartbeatLogger flushHeartbeatsIntoPayload]));
-  }];
 }
 
 - (void)testAuthToken {
@@ -120,15 +95,6 @@ static BOOL sFIRInstallationsFirebaseDefaultAppConfigured = NO;
       }];
 
   [self waitForExpectations:@[ authTokenExpectation ] timeout:2];
-
-  // The heartbeat logged during `-[FIRInstallationsIntegrationTests setUp]`
-  // should have been flushed and added to the resulting network request
-  // from the above Installations API call.
-  [self addTeardownBlock:^{
-    FBLWaitForPromisesWithTimeout(20);
-    XCTAssertNil(FIRHeaderValueFromHeartbeatsPayload(
-        [FIRApp.defaultApp.heartbeatLogger flushHeartbeatsIntoPayload]));
-  }];
 }
 
 - (void)testDeleteInstallation {
@@ -152,15 +118,6 @@ static BOOL sFIRInstallationsFirebaseDefaultAppConfigured = NO;
   XCTAssertNotEqualObjects(FIDBefore, FIDAfter);
   XCTAssertNotEqualObjects(authTokenBefore.authToken, authTokenAfter.authToken);
   XCTAssertNotEqualObjects(authTokenBefore.expirationDate, authTokenAfter.expirationDate);
-
-  // The heartbeat logged during `-[FIRInstallationsIntegrationTests setUp]`
-  // should have been flushed and added to the resulting network request
-  // from the above Installations API call.
-  [self addTeardownBlock:^{
-    FBLWaitForPromisesWithTimeout(20);
-    XCTAssertNil(FIRHeaderValueFromHeartbeatsPayload(
-        [FIRApp.defaultApp.heartbeatLogger flushHeartbeatsIntoPayload]));
-  }];
 }
 
 - (void)testInstallationsWithApp {

@@ -22,24 +22,14 @@
   _mappingID = mappingID;
   _target = target;
   _sendDataEvent_wasWritten = YES;
-  _async = NO;
 
   return [super initWithMappingID:mappingID transformers:transformers target:target];
 }
 
 - (void)sendDataEvent:(GDTCOREvent *)event
            onComplete:(void (^)(BOOL wasWritten, NSError *error))completion {
-  dispatch_block_t sendData = ^() {
-    self.sendDataEvent_event = event;
-    completion(self.sendDataEvent_wasWritten, self.sendDataEvent_error);
-  };
-
-  if (self.async) {
-    dispatch_after(DISPATCH_TIME_NOW, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
-                   sendData);
-  } else {
-    sendData();
-  }
+  self.sendDataEvent_event = event;
+  completion(self.sendDataEvent_wasWritten, self.sendDataEvent_error);
 }
 
 @end

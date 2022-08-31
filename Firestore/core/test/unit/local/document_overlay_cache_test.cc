@@ -42,9 +42,7 @@ namespace local {
 using credentials::User;
 using model::DocumentKey;
 using model::Mutation;
-using model::MutationByDocumentKeyMap;
 using model::Overlay;
-using model::OverlayByDocumentKeyMap;
 using model::ResourcePath;
 using ::testing::UnorderedElementsAreArray;
 using testutil::DeleteMutation;
@@ -73,7 +71,7 @@ DocumentOverlayCacheTestBase::DocumentOverlayCacheTestBase(
 
 void DocumentOverlayCacheTestBase::SaveOverlaysWithMutations(
     int largest_batch_id, const std::vector<Mutation>& mutations) {
-  MutationByDocumentKeyMap data;
+  DocumentOverlayCache::MutationByDocumentKeyMap data;
   for (const auto& mutation : mutations) {
     ASSERT_TRUE(data.find(mutation.key()) == data.end());
     data.insert({mutation.key(), mutation});
@@ -83,7 +81,7 @@ void DocumentOverlayCacheTestBase::SaveOverlaysWithMutations(
 
 void DocumentOverlayCacheTestBase::SaveOverlaysWithSetMutations(
     int largest_batch_id, const std::vector<std::string>& keys) {
-  MutationByDocumentKeyMap data;
+  DocumentOverlayCache::MutationByDocumentKeyMap data;
   for (const auto& key : keys) {
     DocumentKey document_key = DocumentKey::FromPathString(key);
     ASSERT_TRUE(data.find(document_key) == data.end());
@@ -120,8 +118,9 @@ DocumentOverlayCacheTest::DocumentOverlayCacheTest()
 
 namespace {
 
-void VerifyOverlayContains(const OverlayByDocumentKeyMap& overlays,
-                           const std::unordered_set<std::string>& keys) {
+void VerifyOverlayContains(
+    const DocumentOverlayCache::OverlayByDocumentKeyMap& overlays,
+    const std::unordered_set<std::string>& keys) {
   using DocumentKeySet =
       std::unordered_set<DocumentKey, model::DocumentKeyHash>;
 
@@ -147,49 +146,14 @@ TEST(DocumentOverlayCacheTest, TypeTraits) {
 }
 
 TEST_P(DocumentOverlayCacheTest, ReturnsNullWhenOverlayIsNotFound) {
-  this->persistence_->Run("ReturnsNullWhenOverlayIsNotFound", [&] {
+  this->persistence_->Run("Test", [&] {
     EXPECT_FALSE(
         this->cache_->GetOverlay(DocumentKey::FromPathString("coll/doc1")));
   });
 }
 
-TEST_P(DocumentOverlayCacheTest, SkipsNonExistingOverlayInBatchLookup) {
-  this->persistence_->Run("SkipsNonExistingOverlayInBatchLookup", [&] {
-    model::OverlayByDocumentKeyMap result;
-    const auto lookup = std::set<DocumentKey>{{testutil::Key("coll/doc")}};
-    this->cache_->GetOverlays(result, lookup);
-    EXPECT_TRUE(result.empty());
-  });
-}
-
-TEST_P(DocumentOverlayCacheTest, SupportsEmptyBatchInBatchLookup) {
-  this->persistence_->Run("SupportsEmptyBatchInBatchLookup", [&] {
-    model::OverlayByDocumentKeyMap result;
-    this->cache_->GetOverlays(result, {});
-    EXPECT_TRUE(result.empty());
-  });
-}
-
-TEST_P(DocumentOverlayCacheTest, CanReadSavedOverlaysInBatches) {
-  this->persistence_->Run("CanReadSavedOverlaysInBatches", [&] {
-    auto m1 = SetMutation("coll1/a", Map("a", 1));
-    auto m2 = SetMutation("coll1/b", Map("b", 2));
-    auto m3 = SetMutation("coll2/c", Map("c", 3));
-    this->SaveOverlaysWithMutations(3, {m1, m2, m3});
-
-    model::OverlayByDocumentKeyMap result;
-    const auto lookup = std::set<DocumentKey>{testutil::Key("coll1/a"),
-                                              testutil::Key("coll1/b"),
-                                              testutil::Key("coll2/c")};
-    this->cache_->GetOverlays(result, lookup);
-    EXPECT_EQ(m1, result[testutil::Key("coll1/a")].mutation());
-    EXPECT_EQ(m2, result[testutil::Key("coll1/b")].mutation());
-    EXPECT_EQ(m3, result[testutil::Key("coll2/c")].mutation());
-  });
-}
-
 TEST_P(DocumentOverlayCacheTest, CanReadSavedOverlay) {
-  this->persistence_->Run("CanReadSavedOverlay", [&] {
+  this->persistence_->Run("Test", [&] {
     Mutation mutation = PatchMutation("coll/doc1", Map("foo", "bar"));
     this->SaveOverlaysWithMutations(2, {mutation});
 
@@ -202,7 +166,7 @@ TEST_P(DocumentOverlayCacheTest, CanReadSavedOverlay) {
 }
 
 TEST_P(DocumentOverlayCacheTest, CanReadSavedOverlays) {
-  this->persistence_->Run("CanReadSavedOverlays", [&] {
+  this->persistence_->Run("Test", [&] {
     Mutation m1 = PatchMutation("coll/doc1", Map("foo", "bar"));
     Mutation m2 = SetMutation("coll/doc2", Map("foo", "bar"));
     Mutation m3 = DeleteMutation("coll/doc3");
@@ -225,7 +189,7 @@ TEST_P(DocumentOverlayCacheTest, CanReadSavedOverlays) {
 }
 
 TEST_P(DocumentOverlayCacheTest, GetOverlayExactlyMatchesTheGivenDocumentKey) {
-  this->persistence_->Run("GetOverlayExactlyMatchesTheGivenDocumentKey", [&] {
+  this->persistence_->Run("Test", [&] {
     this->SaveOverlaysWithSetMutations(1, {"coll/doc1/sub/doc2"});
 
     EXPECT_FALSE(
@@ -244,7 +208,7 @@ TEST_P(DocumentOverlayCacheTest, GetOverlayExactlyMatchesTheGivenDocumentKey) {
 }
 
 TEST_P(DocumentOverlayCacheTest, SavingOverlayOverwrites) {
-  this->persistence_->Run("SavingOverlayOverwrites", [&] {
+  this->persistence_->Run("Test", [&] {
     Mutation m1 = PatchMutation("coll/doc1", Map("foo", "bar"));
     Mutation m2 = SetMutation("coll/doc1", Map("foo", "set", "bar", 42));
     this->SaveOverlaysWithMutations(2, {m1});
@@ -259,7 +223,7 @@ TEST_P(DocumentOverlayCacheTest, SavingOverlayOverwrites) {
 }
 
 TEST_P(DocumentOverlayCacheTest, DeleteRepeatedlyWorks) {
-  this->persistence_->Run("DeleteRepeatedlyWorks", [&] {
+  this->persistence_->Run("Test", [&] {
     Mutation mutation = PatchMutation("coll/doc1", Map("foo", "bar"));
     this->SaveOverlaysWithMutations(2, {mutation});
 
@@ -276,7 +240,7 @@ TEST_P(DocumentOverlayCacheTest, DeleteRepeatedlyWorks) {
 }
 
 TEST_P(DocumentOverlayCacheTest, GetAllOverlaysForCollection) {
-  this->persistence_->Run("GetAllOverlaysForCollection", [&] {
+  this->persistence_->Run("Test", [&] {
     Mutation m1 = PatchMutation("coll/doc1", Map("foo", "bar"));
     Mutation m2 = SetMutation("coll/doc2", Map("foo", "bar"));
     Mutation m3 = DeleteMutation("coll/doc3");
@@ -314,7 +278,7 @@ TEST_P(DocumentOverlayCacheTest, GetAllOverlaysForCollection) {
 }
 
 TEST_P(DocumentOverlayCacheTest, GetAllOverlaysSinceBatchId) {
-  this->persistence_->Run("GetAllOverlaysSinceBatchId", [&] {
+  this->persistence_->Run("Test", [&] {
     this->SaveOverlaysWithSetMutations(2, {"coll/doc1", "coll/doc2"});
     this->SaveOverlaysWithSetMutations(3, {"coll/doc3"});
     this->SaveOverlaysWithSetMutations(4, {"coll/doc4"});
@@ -328,65 +292,60 @@ TEST_P(DocumentOverlayCacheTest, GetAllOverlaysSinceBatchId) {
 
 TEST_P(DocumentOverlayCacheTest,
        GetAllOverlaysFromCollectionGroupEnforcesCollectionGroup) {
-  this->persistence_->Run(
-      "GetAllOverlaysFromCollectionGroupEnforcesCollectionGroup", [&] {
-        this->SaveOverlaysWithSetMutations(2, {"coll1/doc1", "coll2/doc1"});
-        this->SaveOverlaysWithSetMutations(3, {"coll1/doc2"});
-        this->SaveOverlaysWithSetMutations(4, {"coll2/doc2"});
+  this->persistence_->Run("Test", [&] {
+    this->SaveOverlaysWithSetMutations(2, {"coll1/doc1", "coll2/doc1"});
+    this->SaveOverlaysWithSetMutations(3, {"coll1/doc2"});
+    this->SaveOverlaysWithSetMutations(4, {"coll2/doc2"});
 
-        const auto overlays = this->cache_->GetOverlays("coll1", -1, 50);
+    const auto overlays = this->cache_->GetOverlays("coll1", -1, 50);
 
-        SCOPED_TRACE("verify overlay");
-        VerifyOverlayContains(overlays, {"coll1/doc1", "coll1/doc2"});
-      });
+    SCOPED_TRACE("verify overlay");
+    VerifyOverlayContains(overlays, {"coll1/doc1", "coll1/doc2"});
+  });
 }
 
 TEST_P(DocumentOverlayCacheTest,
        GetAllOverlaysFromCollectionGroupEnforcesBatchId) {
-  this->persistence_->Run(
-      "GetAllOverlaysFromCollectionGroupEnforcesBatchId", [&] {
-        this->SaveOverlaysWithSetMutations(2, {"coll/doc1"});
-        this->SaveOverlaysWithSetMutations(3, {"coll/doc2"});
+  this->persistence_->Run("Test", [&] {
+    this->SaveOverlaysWithSetMutations(2, {"coll/doc1"});
+    this->SaveOverlaysWithSetMutations(3, {"coll/doc2"});
 
-        const auto overlays = this->cache_->GetOverlays("coll", 2, 50);
+    const auto overlays = this->cache_->GetOverlays("coll", 2, 50);
 
-        SCOPED_TRACE("verify overlay");
-        VerifyOverlayContains(overlays, {"coll/doc2"});
-      });
+    SCOPED_TRACE("verify overlay");
+    VerifyOverlayContains(overlays, {"coll/doc2"});
+  });
 }
 
 TEST_P(DocumentOverlayCacheTest,
        GetAllOverlaysFromCollectionGroupEnforcesLimit) {
-  this->persistence_->Run(
-      "GetAllOverlaysFromCollectionGroupEnforcesLimit", [&] {
-        this->SaveOverlaysWithSetMutations(1, {"coll/doc1"});
-        this->SaveOverlaysWithSetMutations(2, {"coll/doc2"});
-        this->SaveOverlaysWithSetMutations(3, {"coll/doc3"});
+  this->persistence_->Run("Test", [&] {
+    this->SaveOverlaysWithSetMutations(1, {"coll/doc1"});
+    this->SaveOverlaysWithSetMutations(2, {"coll/doc2"});
+    this->SaveOverlaysWithSetMutations(3, {"coll/doc3"});
 
-        const auto overlays = this->cache_->GetOverlays("coll", -1, 2);
+    const auto overlays = this->cache_->GetOverlays("coll", -1, 2);
 
-        SCOPED_TRACE("verify overlay");
-        VerifyOverlayContains(overlays, {"coll/doc1", "coll/doc2"});
-      });
+    SCOPED_TRACE("verify overlay");
+    VerifyOverlayContains(overlays, {"coll/doc1", "coll/doc2"});
+  });
 }
 
 TEST_P(DocumentOverlayCacheTest,
        GetAllOverlaysFromCollectionGroupWithLimitIncludesFullBatches) {
-  this->persistence_->Run(
-      "GetAllOverlaysFromCollectionGroupWithLimitIncludesFullBatches", [&] {
-        this->SaveOverlaysWithSetMutations(1, {"coll/doc1"});
-        this->SaveOverlaysWithSetMutations(2, {"coll/doc2", "coll/doc3"});
+  this->persistence_->Run("Test", [&] {
+    this->SaveOverlaysWithSetMutations(1, {"coll/doc1"});
+    this->SaveOverlaysWithSetMutations(2, {"coll/doc2", "coll/doc3"});
 
-        const auto overlays = this->cache_->GetOverlays("coll", -1, 2);
+    const auto overlays = this->cache_->GetOverlays("coll", -1, 2);
 
-        SCOPED_TRACE("verify overlay");
-        VerifyOverlayContains(overlays,
-                              {"coll/doc1", "coll/doc2", "coll/doc3"});
-      });
+    SCOPED_TRACE("verify overlay");
+    VerifyOverlayContains(overlays, {"coll/doc1", "coll/doc2", "coll/doc3"});
+  });
 }
 
 TEST_P(DocumentOverlayCacheTest, UpdateDocumentOverlay) {
-  this->persistence_->Run("UpdateDocumentOverlay", [&] {
+  this->persistence_->Run("Test", [&] {
     Mutation mutation1 = PatchMutation("coll/doc", Map("foo", "bar1"));
     Mutation mutation2 = PatchMutation("coll/doc", Map("foo", "bar2"));
     this->SaveOverlaysWithMutations(1, {mutation1});
@@ -409,7 +368,7 @@ TEST_P(DocumentOverlayCacheTest, UpdateDocumentOverlay) {
 }
 
 TEST_P(DocumentOverlayCacheTest, OverwriteEntryUpdatesIndexes) {
-  this->persistence_->Run("OverwriteEntryUpdatesIndexes", [&] {
+  this->persistence_->Run("Test", [&] {
     Mutation mutation1 = PatchMutation("coll/doc1", Map("foo", "bar"));
     this->SaveOverlaysWithMutations(100, {mutation1});
     Mutation mutation2 = PatchMutation("coll/doc1", Map("biz", "baz"));
@@ -433,7 +392,7 @@ TEST_P(DocumentOverlayCacheTest, OverwriteEntryUpdatesIndexes) {
 }
 
 TEST_P(DocumentOverlayCacheTest, RemoveOverlaysUntilEmpty) {
-  this->persistence_->Run("RemoveOverlaysUntilEmpty", [&] {
+  this->persistence_->Run("Test", [&] {
     Mutation mutation1a = PatchMutation("coll/doc1a", Map("foo", "bar"));
     Mutation mutation1b = PatchMutation("coll/doc1b", Map("foo", "bar"));
     this->SaveOverlaysWithMutations(1, {mutation1a, mutation1b});
@@ -474,7 +433,7 @@ TEST_P(DocumentOverlayCacheTest, RemoveOverlaysUntilEmpty) {
 }
 
 TEST_P(DocumentOverlayCacheTest, SaveDoesntAffectSubCollections) {
-  this->persistence_->Run("SaveDoesntAffectSubCollections", [&] {
+  this->persistence_->Run("Test", [&] {
     Mutation mutation1 =
         PatchMutation("coll/doc/subcoll/subdoc", Map("foo", "bar1"));
     Mutation mutation2 = PatchMutation("coll/doc", Map("foo", "bar2"));
